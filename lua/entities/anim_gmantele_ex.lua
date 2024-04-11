@@ -34,14 +34,19 @@ if SERVER then
 		BaseClass.Think(self)
 		if not self.StartWalking and self:GetEndDoorTime() < CurTime() then
 			self:ResetSequence("walk_suitcase")
-			self.StartWalking = CurTime() + 2.1
+			self.StartWalking = CurTime() + 1.7
 			self:SetVelocity(self:GetForward() * 30)
 			self:SetMoveType(MOVETYPE_NOCLIP)
 			self:SetPoseParameter("move_x", 0.5)
 		elseif self.StartWalking and self.StartWalking < CurTime() and not self.ClosingDoor then
 			self:SetEndDoorTime(CurTime() + 1)
-			self.ClosingDoor = true
-			SafeRemoveEntityDelayed(self, 2)
+			self.ClosingDoor = CurTime() + 0.3
+		elseif self.ClosingDoor and self.ClosingDoor < CurTime() and not self.Finished then
+			self.Finshed = true
+			self:ResetSequence("idle_all_01")
+			self:SetVelocity(vector_origin)
+			self:SetMoveType(MOVETYPE_NONE)
+			SafeRemoveEntityDelayed(self, 3)
 		end
 
 		self:NextThink(CurTime())
@@ -92,16 +97,14 @@ if CLIENT then
 	function ENT:DrawTranslucent()
 		self:DrawShadow(false)
 		if self:GetEndDoorTime() == 0 and not self.DPos or not self.StartTime then
-			self.DPos = util.QuickTrace(self:GetPos() + self:GetUp() * 2, self:GetForward() * 41, function() return false end).HitPos - self:GetForward()
+			self.DPos = self:GetPos() + self:GetForward() * 32
 			self.StartTime = CurTime()
 			self:EmitSound(self.OpenSound)
 			return
 		end
 
 		local pos, ang = self.DPos, self:GetForward():Angle()
-		ang:RotateAroundAxis(ang:Up(), 180)
 		local dang = self:GetForward():Angle()
-		dang:RotateAroundAxis(dang:Up(), 180)
 		dang:RotateAroundAxis(dang:Right(), - 90)
 		dang:RotateAroundAxis(dang:Up(), 90)
 
@@ -133,7 +136,7 @@ if CLIENT then
 		DrawWall(pos + ang:Right() * 25 + ang:Up() * 100 * per - Vector(0, 0, 1), dang, 50, 100 * per)
 
 		local oldclip = render.EnableClipping(true)
-		render.PushCustomClipPlane(-self:GetForward(), -self:GetForward():Dot(self.DPos))
+		render.PushCustomClipPlane(self:GetForward(), self:GetForward():Dot(self.DPos))
 
 		render.SetStencilReferenceValue(0)
 		self:DrawModel()
@@ -162,7 +165,7 @@ if CLIENT then
 			}
 		)
 
-		render.PushCustomClipPlane(self:GetForward(), self:GetForward():Dot(self.DPos))
+		render.PushCustomClipPlane(-self:GetForward(), -self:GetForward():Dot(self.DPos))
 		render.DepthRange( 0, 0.1 )
 		self:DrawModel()
 		self:DrawBriefcase()
