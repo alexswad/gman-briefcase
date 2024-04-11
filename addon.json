@@ -1,0 +1,11 @@
+{
+	"title"		:	"G-Man's Teleporting Briefcase",
+	"type"		:	"weapon",
+	"tags"		:	[ "roleplay", "comic"],
+	"ignore"	:
+	[
+		"*.psd",
+		"*.vcproj",
+		"*.svn*"
+	]
+}

@@ -56,6 +56,12 @@ end
 if CLIENT then
 	function SWEP:OnRemove()
 		self.ClientModel:Remove()
+		timer.Simple(0.1, function()
+			if not LocalPlayer():GetNWBool("GMAN_BF") and LocalPlayer().ColorMod then
+				GetConVar("pp_colormod"):SetInt(0)
+				LocalPlayer().ColorMod = nil
+			end
+		end)
 	end
 
 	function SWEP:PrimaryAttack()
@@ -68,9 +74,27 @@ if CLIENT then
 	end
 
 	function SWEP:HUDShouldDraw( name )
-		if LocalPlayer():GetNWBool("GMAN_BF") then
+		if LocalPlayer():GetNWBool("GMAN_BF") and not IsValid(LocalPlayer():GetNWEntity("GMAN_ANIM")) then
+			if not LocalPlayer().ColorMod then
+				GetConVar("pp_colormod"):SetInt(1)
+				GetConVar("pp_colormod_addr"):SetInt(0)
+				GetConVar("pp_colormod_addg"):SetInt(0)
+				GetConVar("pp_colormod_addb"):SetInt(0)
+				GetConVar("pp_colormod_brightness"):SetInt(0)
+				GetConVar("pp_colormod_contrast"):SetInt(1)
+				GetConVar("pp_colormod_color"):SetInt(0)
+				GetConVar("pp_colormod_mulr"):SetInt(0)
+				GetConVar("pp_colormod_mulg"):SetInt(0)
+				GetConVar("pp_colormod_mulb"):SetInt(0)
+				GetConVar("pp_colormod_inv"):SetInt(1)
+				LocalPlayer().ColorMod = true
+			end
+
 			if ( name == "CHudChat" ) then return true end
 			return false
+		elseif LocalPlayer().ColorMod then
+			GetConVar("pp_colormod"):SetInt(0)
+			LocalPlayer().ColorMod = nil
 		end
 		return true
 	end
