@@ -167,6 +167,11 @@ elseif SERVER then
 		a:SetModel(owner:GetModel())
 		a:SetPlayerColor(owner:GetPlayerColor())
 
+		for k, v in pairs(owner:GetBodyGroups()) do
+			a:SetBodygroup(v.id, owner:GetBodygroup(v.id))
+		end
+		a:SetSkin(owner:GetSkin())
+
 		math.randomseed(CurTime() + a:GetCreationID())
 		local snd = math.random(1, 20)
 
