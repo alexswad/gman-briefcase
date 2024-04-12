@@ -320,7 +320,7 @@ hook.Add("CalcView", "GMAN_CALCVIEW", function(ply, origin, angles, fov)
 end)
 
 hook.Add("ShouldDisableLegs", "GMAN_LEGSUPPORT", function()
-	if LocalPlayer():GetNWEntity("GMAN_ANIM") or LocalPlayer():GetNWBool("GMAN_BF") then
+	if IsValid(LocalPlayer():GetNWEntity("GMAN_ANIM")) or LocalPlayer():GetNWBool("GMAN_BF") then
 		return true
 	end
 end)
