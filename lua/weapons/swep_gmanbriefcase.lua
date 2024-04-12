@@ -49,8 +49,9 @@ function SWEP:DrawWorldModel(flags)
 		self.ClientModel:SetPos(newPos)
 		self.ClientModel:SetAngles(newAng)
 		self.ClientModel:DrawModel()
+	else
+		self:DrawModel()
 	end
-
 end
 
 if CLIENT then
