@@ -117,6 +117,11 @@ elseif SERVER then
 		a:SetModel(owner:GetModel())
 		a:SetPlayerColor(owner:GetPlayerColor())
 
+		for k, v in pairs(owner:GetBodyGroups()) do
+			a:SetBodygroup(v.id, owner:GetBodygroup(v.id))
+		end
+		a:SetSkin(owner:GetSkin())
+
 		math.randomseed(SysTime() + a:GetCreationID())
 		local snd = math.random(1, 20)
 
@@ -132,6 +137,7 @@ elseif SERVER then
 		a:Spawn()
 
 		owner:SetNWEntity("GMAN_ANIM", a)
+		owner:Flashlight(false)
 		EnableNoclip(owner)
 
 		timer.Simple(5.1, function()
@@ -310,5 +316,11 @@ end)
 hook.Add("ShouldDisableLegs", "GMAN_LEGSUPPORT", function()
 	if LocalPlayer():GetNWEntity("GMAN_ANIM") or LocalPlayer():GetNWBool("GMAN_BF") then
 		return true
+	end
+end)
+
+hook.Add("PlayerSwitchFlashlight", "GMAN_FLASHLIGHT", function(ply, bool)
+	if ply:GetNWBool("GMAN_BF") and bool then
+		return false
 	end
 end)
