@@ -5,7 +5,7 @@ SWEP.Instructions 	= "Left Click - Disappear / Right Click - Reappear"
 SWEP.Purpose 		= "Its very heavy, almost like its filled with rocks."
 
 SWEP.Spawnable = true
-SWEP.AdminOnly = true
+SWEP.AdminOnly = false
 SWEP.ViewModel = "models/weapons/v_hands.mdl"
 SWEP.WorldModel = "models/weapons/w_suitcase_passenger.mdl"
 SWEP.Slot = 4
@@ -36,12 +36,12 @@ end
 local offsetVec = Vector(5, -1, 0)
 local offsetAng = Angle(-90, 0, 0)
 function SWEP:DrawWorldModel(flags)
-	local _Owner = self:GetOwner()
-	if (IsValid(_Owner) and not _Owner:GetNWBool("GMAN_BF")) then
-		local boneid = _Owner:LookupBone("ValveBiped.Bip01_R_Hand") -- Right Hand
+	local owner = self:GetOwner()
+	if IsValid(owner) and not owner:GetNWBool("GMAN_BF") then
+		local boneid = owner:LookupBone("ValveBiped.Bip01_R_Hand") -- Right Hand
 		if not boneid then return end
 
-		local matrix = _Owner:GetBoneMatrix(boneid)
+		local matrix = owner:GetBoneMatrix(boneid)
 		if not matrix then return end
 
 		local newPos, newAng = LocalToWorld(offsetVec, offsetAng, matrix:GetTranslation(), matrix:GetAngles())
@@ -56,12 +56,6 @@ end
 if CLIENT then
 	function SWEP:OnRemove()
 		self.ClientModel:Remove()
-		timer.Simple(0.1, function()
-			if not LocalPlayer():GetNWBool("GMAN_BF") and LocalPlayer().ColorMod then
-				GetConVar("pp_colormod"):SetInt(0)
-				LocalPlayer().ColorMod = nil
-			end
-		end)
 	end
 
 	function SWEP:PrimaryAttack()
@@ -74,27 +68,9 @@ if CLIENT then
 	end
 
 	function SWEP:HUDShouldDraw( name )
-		if LocalPlayer():GetNWBool("GMAN_BF") and not IsValid(LocalPlayer():GetNWEntity("GMAN_ANIM")) then
-			if not LocalPlayer().ColorMod then
-				GetConVar("pp_colormod"):SetInt(1)
-				GetConVar("pp_colormod_addr"):SetInt(0)
-				GetConVar("pp_colormod_addg"):SetInt(0)
-				GetConVar("pp_colormod_addb"):SetInt(0)
-				GetConVar("pp_colormod_brightness"):SetInt(0)
-				GetConVar("pp_colormod_contrast"):SetInt(1)
-				GetConVar("pp_colormod_color"):SetInt(0)
-				GetConVar("pp_colormod_mulr"):SetInt(0)
-				GetConVar("pp_colormod_mulg"):SetInt(0)
-				GetConVar("pp_colormod_mulb"):SetInt(0)
-				GetConVar("pp_colormod_inv"):SetInt(1)
-				LocalPlayer().ColorMod = true
-			end
-
+		if LocalPlayer():GetNWBool("GMAN_BF") then
 			if ( name == "CHudChat" ) then return true end
 			return false
-		elseif LocalPlayer().ColorMod then
-			GetConVar("pp_colormod"):SetInt(0)
-			LocalPlayer().ColorMod = nil
 		end
 		return true
 	end
@@ -110,6 +86,24 @@ elseif SERVER then
 		"ambient/alarms/manhack_alert_pass1.wav",
 		"ambient/alarms/scanner_alert_pass1.wav"
 	}
+
+	local function EnableNoclip(ply)
+		ply:SetNWBool("GMAN_BF", true)
+		ply:SetNoDraw(true)
+		ply:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
+		ply:SetMoveType(MOVETYPE_FLY)
+		ply:SetNoTarget(true)
+	end
+
+	local function DisableNoclip(ply)
+		if ply:GetNWBool("GMAN_BF") then
+			ply:SetNoDraw(false)
+			ply:SetCollisionGroup(COLLISION_GROUP_NONE)
+			ply:SetNoTarget(false)
+			ply:SetMoveType(MOVETYPE_WALK)
+		end
+		ply:SetNWBool("GMAN_BF", false)
+	end
 
 	function SWEP:PrimaryAttack()
 		local owner = self:GetOwner()
@@ -138,10 +132,7 @@ elseif SERVER then
 		a:Spawn()
 
 		owner:SetNWEntity("GMAN_ANIM", a)
-		owner:SetNWBool("GMAN_BF", true)
-		owner:SetNoDraw(true)
-		owner:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
-		owner:SetMoveType(MOVETYPE_NOCLIP)
+		EnableNoclip(owner)
 
 		timer.Simple(5.1, function()
 			if IsValid(a) and IsValid(owner) then
@@ -162,7 +153,7 @@ elseif SERVER then
 
 		local tr = util.QuickTrace(owner:EyePos(), Angle(0, owner:EyeAngles().y, 0):Forward() * 60, {owner})
 		if tr.Hit then return end
-		tr = util.QuickTrace(owner:EyePos(), -owner:GetUp() * 80, {owner})
+		tr = util.QuickTrace(owner:EyePos(), -owner:GetUp() * 128, {owner})
 		self.LastGoodPos = owner:GetPos()
 
 		local a = ents.Create("anim_gmantele_ex")
@@ -183,24 +174,20 @@ elseif SERVER then
 		owner:SetNWEntity("GMAN_ANIM", a)
 
 		timer.Simple(5, function()
-			if IsValid(a) and IsValid(owner) then
+			if IsValid(a) and IsValid(owner) and IsValid(self) then
 				owner:SetPos(a:GetPos())
 				owner:SetEyeAngles(a:GetAngles())
 			end
 		end)
 
 		timer.Simple(5.1, function()
-			if IsValid(a) and IsValid(owner) then
+			if IsValid(a) and IsValid(owner) and IsValid(self) then
 				owner:SetNWEntity("GMAN_ANIM", NULL)
-				owner:SetNWBool("GMAN_BF", false)
-				owner:SetNoDraw(false)
-				owner:SetCollisionGroup(COLLISION_GROUP_NONE)
-				owner:SetMoveType(MOVETYPE_WALK)
+				DisableNoclip(owner)
 
 				owner:SetPos(a:GetPos())
 				owner:SetEyeAngles(a:GetAngles())
 				a:Remove()
-				owner:SetNWEntity("GMAN_ANIM", NULL)
 			end
 		end)
 
@@ -210,32 +197,65 @@ elseif SERVER then
 
 	function SWEP:OnDrop()
 		local owner = self:GetOwner()
-		if IsValid(owner) and owner:GetNWBool("GMAN_BF") then
+		if IsValid(owner) and owner:Alive() and owner:GetNWBool("GMAN_BF") then
 			owner:SetNWEntity("GMAN_ANIM", NULL)
-			owner:SetNWBool("GMAN_BF", false)
-			owner:SetNoDraw(false)
-			owner:SetCollisionGroup(COLLISION_GROUP_NONE)
-			owner:SetMoveType(MOVETYPE_WALK)
+			DisableNoclip(owner)
 			owner:SetPos(self.LastGoodPos or owner:GetPos())
 		end
 	end
 
 	function SWEP:OnRemove()
 		local owner = self:GetOwner()
-		if IsValid(owner) and owner:GetNWBool("GMAN_BF") then
+		if IsValid(owner) and owner:Alive() and owner:GetNWBool("GMAN_BF") then
 			owner:SetNWEntity("GMAN_ANIM", NULL)
-			owner:SetNWBool("GMAN_BF", false)
-			owner:SetNoDraw(false)
-			owner:SetCollisionGroup(COLLISION_GROUP_NONE)
-			owner:SetMoveType(MOVETYPE_WALK)
+			DisableNoclip(owner)
 			owner:SetPos(self.LastGoodPos or owner:GetPos())
 		end
 	end
+
+	hook.Add("PlayerSpawn", "GMAN_SPAWN", function(ply)
+		ply:SetNWEntity("GMAN_ANIM", NULL)
+		DisableNoclip(ply)
+	end)
 end
 
 hook.Add("SetupMove","GMAN_BRIEFCASE_SPEED", function( ply, mv )
 	if IsValid(ply:GetActiveWeapon()) and ply:GetActiveWeapon():GetClass() == "swep_gmanbriefcase" then
 		mv:SetMaxClientSpeed(130)
+	end
+end)
+
+local speed = 700
+hook.Add("Move", "GMAN_MOVE", function(ply, mv)
+	if ply:GetNWBool("GMAN_BF") then
+		local pos = Vector(0, 0, 0)
+		local ang = mv:GetMoveAngles()
+
+		if mv:KeyDown(IN_MOVERIGHT) then
+			pos:Add(ang:Right() * speed)
+		end
+
+		if mv:KeyDown(IN_MOVELEFT) then
+			pos:Add(-ang:Right() * speed)
+		end
+
+		if mv:KeyDown(IN_JUMP) then
+			pos:Add(ang:Up() * speed)
+		end
+
+		if mv:KeyDown(IN_DUCK) then
+			pos:Add(-ang:Up() * speed)
+		end
+
+		if mv:KeyDown(IN_FORWARD) then
+			pos:Add(ang:Forward() * speed)
+		end
+
+		if mv:KeyDown(IN_BACK) then
+			pos:Add(-ang:Forward() * speed)
+		end
+
+		mv:SetVelocity(pos)
 	end
 end)
 
@@ -248,7 +268,7 @@ hook.Add("StartCommand", "GMAN_BF", function(ply, ucmd)
 end)
 
 hook.Add("PlayerNoClip", "GMAN_NOCLIP", function(ply)
-	if ply:GetNWBool("GMAN_BF") then return false end
+	if ply:GetNWBool("GMAN_BF") then return true end
 end)
 
 hook.Add("PlayerSwitchWeapon", "GMAN_SWITCHWEAPON", function(ply, oldweapon)
@@ -259,6 +279,18 @@ hook.Add("TranslateActivity", "GMAN_BRIEFCASE_SPEED_WALKANIM", function(ply, act
 	if act == ACT_MP_WALK and IsValid(ply:GetActiveWeapon()) and ply:GetActiveWeapon():GetClass() == "swep_gmanbriefcase" then
 		return ACT_HL2MP_WALK_SUITCASE
 	end
+end)
+
+hook.Add("EntityTakeDamage", "GMAN_DAMAGE", function(ent, dmg)
+	if IsValid(ent) and ent:GetNWBool("GMAN_BF") then return true end
+end)
+
+hook.Add("PrePlayerDraw", "GMAN_DRAWPLY", function(ply)
+	if ply:GetNWBool("GMAN_BF") then return true end
+end)
+
+hook.Add("ShouldDrawLocalPlayer", "GMAN_DRAWPLY", function(ply)
+	if ply:GetNWBool("GMAN_BF") then return false end
 end)
 
 hook.Add("CalcView", "GMAN_CALCVIEW", function(ply, origin, angles, fov)
@@ -272,5 +304,11 @@ hook.Add("CalcView", "GMAN_CALCVIEW", function(ply, origin, angles, fov)
 			drawviewer = false,
 			drawviewmodel = false,
 		}
+	end
+end)
+
+hook.Add("ShouldDisableLegs", "GMAN_LEGSUPPORT", function()
+	if LocalPlayer():GetNWEntity("GMAN_ANIM") or LocalPlayer():GetNWBool("GMAN_BF") then
+		return true
 	end
 end)
