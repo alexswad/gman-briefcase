@@ -19,7 +19,8 @@ ENT.FullyOpen = "doors/door_metal_thin_open1.wav"
 
 function ENT:SetupDataTables()
 	self:NetworkVar("Float", 0, "EndDoorTime")
-	self:NetworkVar("Bool", 1, "Close")
+	self:NetworkVar("Bool", 0, "Close")
+	self:NetworkVar("Bool", 1, "NoBrief")
 	self:NetworkVar("Vector", 0, "PlayerColor")
 end
 
@@ -33,7 +34,11 @@ if SERVER then
 	function ENT:Think()
 		BaseClass.Think(self)
 		if not self.StartWalking and self:GetEndDoorTime() < CurTime() then
-			self:ResetSequence("walk_suitcase")
+			if self:GetNoBrief() then
+				self:ResetSequence("walk_all")
+			else
+				self:ResetSequence("walk_suitcase")
+			end
 			self.StartWalking = CurTime() + 1.7
 			self:SetVelocity(self:GetForward() * 30)
 			self:SetMoveType(MOVETYPE_NOCLIP)
@@ -41,6 +46,7 @@ if SERVER then
 		elseif self.StartWalking and self.StartWalking < CurTime() and not self.ClosingDoor then
 			self:SetEndDoorTime(CurTime() + 1)
 			self.ClosingDoor = CurTime() + 0.3
+			self:SetClose(true)
 		elseif self.ClosingDoor and self.ClosingDoor < CurTime() and not self.Finished then
 			self.Finshed = true
 			self:ResetSequence("idle_all_01")
@@ -84,7 +90,7 @@ if CLIENT then
 		BaseClass.Think(self)
 
 		self:SetNextClientThink(CurTime())
-		self:SetRenderBounds(Vector(-16, -16, 0), Vector(16, 16, 64), Vector(75, 75, 75))
+		self:SetRenderBounds(Vector(-16, -16, 0), Vector(16, 16, 64), Vector(150, 150, 150))
 		return true
 	end
 
@@ -113,6 +119,7 @@ if CLIENT then
 			self:EmitSound(self.FullyOpen)
 		elseif self.CloseLatch and self:GetEndDoorTime() > CurTime() and not self.Close then
 			self.Close = true
+			self.HideModel = CurTime() + 0.3
 			self.StartTime = CurTime()
 			self:EmitSound(self.CloseSound)
 		end
@@ -132,15 +139,17 @@ if CLIENT then
 		render.SetStencilCompareFunction(STENCILCOMPARISONFUNCTION_ALWAYS)
 		render.SetStencilReferenceValue(1)
 
-		per = (not self.Close and per or (1 - per))
+		per = (not (self:GetClose() or self.Close) and per or (1 - per))
 		DrawWall(pos + ang:Right() * 25 + ang:Up() * 100 * per - Vector(0, 0, 1), dang, 50, 100 * per)
 
 		local oldclip = render.EnableClipping(true)
 		render.PushCustomClipPlane(self:GetForward(), self:GetForward():Dot(self.DPos))
 
 		render.SetStencilReferenceValue(0)
-		self:DrawModel()
-		self:DrawBriefcase()
+		if not self.HideModel or self.HideModel > CurTime() then
+			self:DrawModel()
+			self:DrawBriefcase()
+		end
 
 		render.PopCustomClipPlane()
 
@@ -188,6 +197,7 @@ if CLIENT then
 	local offsetVec = Vector(5, -1, 0)
 	local offsetAng = Angle(-90, 0, 0)
 	function ENT:DrawBriefcase()
+		if self:GetNoBrief() then return end
 		local boneid = self:LookupBone("ValveBiped.Bip01_R_Hand") -- Right Hand
 		if not boneid or not IsValid(self.ClientModel) then return end
 

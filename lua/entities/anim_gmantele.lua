@@ -19,7 +19,8 @@ ENT.FullyOpen = "doors/door_metal_thin_open1.wav"
 
 function ENT:SetupDataTables()
 	self:NetworkVar("Float", 0, "EndDoorTime")
-	self:NetworkVar("Bool", 1, "Close")
+	self:NetworkVar("Bool", 0, "Close")
+	self:NetworkVar("Bool", 1, "NoBrief")
 	self:NetworkVar("Vector", 0, "PlayerColor")
 end
 
@@ -33,14 +34,23 @@ if SERVER then
 	function ENT:Think()
 		BaseClass.Think(self)
 		if not self.StartWalking and self:GetEndDoorTime() < CurTime() then
-			self:ResetSequence("walk_suitcase")
-			self.StartWalking = CurTime() + 2.1
-			self:SetVelocity(self:GetForward() * 30)
+			if self:GetNoBrief() then
+				self:ResetSequence("walk_all")
+				self:SetPoseParameter("move_x", 1)
+				self:SetVelocity(self:GetForward() * 60)
+				self.StartWalking = CurTime() + 1.1
+			else
+				self:ResetSequence("walk_suitcase")
+				self:SetPoseParameter("move_x", 0.5)
+				self:SetVelocity(self:GetForward() * 30)
+				self.StartWalking = CurTime() + 2.1
+			end
+
 			self:SetMoveType(MOVETYPE_NOCLIP)
-			self:SetPoseParameter("move_x", 0.5)
 		elseif self.StartWalking and self.StartWalking < CurTime() and not self.ClosingDoor then
 			self:SetEndDoorTime(CurTime() + 1)
 			self.ClosingDoor = true
+			self:SetClose(true)
 			SafeRemoveEntityDelayed(self, 2)
 		end
 
@@ -79,7 +89,7 @@ if CLIENT then
 		BaseClass.Think(self)
 
 		self:SetNextClientThink(CurTime())
-		self:SetRenderBounds(Vector(-16, -16, 0), Vector(16, 16, 64), Vector(75, 75, 75))
+		self:SetRenderBounds(Vector(-16, -16, 0), Vector(16, 16, 64), Vector(150, 150, 150))
 		return true
 	end
 
@@ -129,7 +139,7 @@ if CLIENT then
 		render.SetStencilCompareFunction(STENCILCOMPARISONFUNCTION_ALWAYS)
 		render.SetStencilReferenceValue(1)
 
-		per = (not self.Close and per or (1 - per))
+		per = (not (self:GetClose() or self.Close) and per or (1 - per))
 		DrawWall(pos + ang:Right() * 25 + ang:Up() * 100 * per - Vector(0, 0, 1), dang, 50, 100 * per)
 
 		local oldclip = render.EnableClipping(true)
@@ -185,6 +195,7 @@ if CLIENT then
 	local offsetVec = Vector(5, -1, 0)
 	local offsetAng = Angle(-90, 0, 0)
 	function ENT:DrawBriefcase()
+		if self:GetNoBrief() then return end
 		local boneid = self:LookupBone("ValveBiped.Bip01_R_Hand") -- Right Hand
 		if not boneid or not IsValid(self.ClientModel) then return end
 

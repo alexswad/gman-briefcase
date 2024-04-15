@@ -2,7 +2,7 @@ SWEP.PrintName 		= "Gman Briefcase"
 
 SWEP.Author 		= "Axel"
 SWEP.Instructions 	= "Left Click - Disappear / Right Click - Reappear"
-SWEP.Purpose 		= "Its very heavy, almost like its filled with rocks."
+SWEP.Purpose 		= "Jesus Christ Marie! They're Minerals! Its filled with Minerals!"
 
 SWEP.Spawnable = true
 SWEP.AdminOnly = false
@@ -19,8 +19,6 @@ SWEP.Secondary.Ammo = ""
 SWEP.Secondary.ClipSize = -1
 SWEP.Secondary.DefaultClip = -1
 
-SWEP.BobScale = 2
-
 SWEP.DrawAmmo = false
 SWEP.DrawCrosshair = false
 
@@ -30,6 +28,8 @@ function SWEP:Initialize()
 	if CLIENT and not IsValid(self.ClientModel) then
 		self.ClientModel = ClientsideModel(self.WorldModel)
 		self.ClientModel:SetNoDraw(true)
+		-- meme
+		self.Purpose = "Jesus Christ " .. LocalPlayer():Name() .. "! They're Minerals! Its filled with Minerals!"
 	end
 end
 
@@ -91,7 +91,7 @@ elseif SERVER then
 	local function EnableNoclip(ply)
 		ply:SetNWBool("GMAN_BF", true)
 		ply:SetNoDraw(true)
-		ply:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
+		ply:SetCollisionGroup(COLLISION_GROUP_DISSOLVING)
 		ply:SetNoTarget(true)
 	end
 
@@ -106,6 +106,7 @@ elseif SERVER then
 
 	function SWEP:PrimaryAttack()
 		local owner = self:GetOwner()
+		owner:SetCollisionGroup(COLLISION_GROUP_VEHICLE_CLIP)
 		if not IsValid(owner) or owner:GetNWBool("GMAN_BF") then return end
 		self:SetNextPrimaryFire(CurTime() + 3)
 		self.LastGoodPos = owner:GetPos()
@@ -139,13 +140,14 @@ elseif SERVER then
 		owner:Flashlight(false)
 		EnableNoclip(owner)
 
-		timer.Simple(5.1, function()
+		timer.Simple(4, function()
 			if IsValid(a) and IsValid(owner) then
 				owner:SetPos(a:GetPos())
-				a:Remove()
 				owner:SetNWEntity("GMAN_ANIM", NULL)
+				SafeRemoveEntityDelayed(a, 4)
 			end
 		end)
+
 
 		self:SetNextSecondaryFire(CurTime() + 8)
 		self:SetNextPrimaryFire(CurTime() + 8)
@@ -183,23 +185,24 @@ elseif SERVER then
 
 		owner:SetNWEntity("GMAN_ANIM", a)
 
-		timer.Simple(5, function()
+		timer.Simple(3.8, function()
 			if IsValid(a) and IsValid(owner) and IsValid(self) then
 				owner:SetPos(a:GetPos())
 				owner:SetEyeAngles(a:GetAngles())
 			end
 		end)
 
-		timer.Simple(5.1, function()
+		timer.Simple(4, function()
 			if IsValid(a) and IsValid(owner) and IsValid(self) then
 				owner:SetNWEntity("GMAN_ANIM", NULL)
 				DisableNoclip(owner)
 
 				owner:SetPos(a:GetPos())
 				owner:SetEyeAngles(a:GetAngles())
-				a:Remove()
+				SafeRemoveEntityDelayed(a, 2)
 			end
 		end)
+
 
 		self:SetNextSecondaryFire(CurTime() + 8)
 		self:SetNextPrimaryFire(CurTime() + 8)
@@ -241,7 +244,10 @@ hook.Add("Move", "GMAN_MOVE", function(ply, mv)
 		local ang = mv:GetMoveAngles()
 
 		local speed = 400
-		local inworld = util.IsInWorld(ply:GetPos()) and util.IsInWorld(ply:EyePos())
+		local inworld = true
+		if SERVER then
+			inworld = util.IsInWorld(ply:GetPos()) and util.IsInWorld(ply:EyePos())
+		end
 		local movepos = not inworld or (ply.GMAN_WTimer and ply.GMAN_WTimer > CurTime())
 		if movepos then
 			speed = 10
@@ -297,7 +303,7 @@ hook.Add("PlayerNoClip", "GMAN_NOCLIP", function(ply)
 end)
 
 hook.Add("PlayerSwitchWeapon", "GMAN_SWITCHWEAPON", function(ply, oldweapon)
-	if ply:GetNWBool("GMAN_BF") and oldweapon:GetClass() == "swep_gmanbriefcase" then return true end
+	if ply:GetNWBool("GMAN_BF") and IsValid(oldweapon) and oldweapon:GetClass() == "swep_gmanbriefcase" then return true end
 end)
 
 hook.Add("TranslateActivity", "GMAN_BRIEFCASE_SPEED_WALKANIM", function(ply, act)
