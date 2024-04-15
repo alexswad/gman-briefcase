@@ -55,7 +55,9 @@ if CLIENT then
 	end
 
 	function SWEP:OnRemove()
-		self.ClientModel:Remove()
+		if IsValid(self.ClientModel) then
+			self.ClientModel:Remove()
+		end
 	end
 
 	function SWEP:PrimaryAttack()
