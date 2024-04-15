@@ -349,3 +349,16 @@ hook.Add("PlayerFootstep", "GMAN_FOOTSTEP", function(ply)
 		return true
 	end
 end)
+
+hook.Add("OnEntityCreated", "GMAN_NEXTBOTFIX", function(ent)
+	if ent.GetNearestTarget and not ent._GetNearestTarget then
+		ent._GetNearestTarget = ent.GetNearestTarget
+		function ent:GetNearestTarget()
+			local res = self:_GetNearestTarget()
+			if IsValid(res) and res:IsFlagSet(FL_NOTARGET) then
+				return nil
+			end
+			return res
+		end
+	end
+end)
