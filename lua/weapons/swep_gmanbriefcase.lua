@@ -92,7 +92,6 @@ elseif SERVER then
 		ply:SetNWBool("GMAN_BF", true)
 		ply:SetNoDraw(true)
 		ply:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
-		ply:SetMoveType(MOVETYPE_FLY)
 		ply:SetNoTarget(true)
 	end
 
@@ -101,7 +100,6 @@ elseif SERVER then
 			ply:SetNoDraw(false)
 			ply:SetCollisionGroup(COLLISION_GROUP_NONE)
 			ply:SetNoTarget(false)
-			ply:SetMoveType(MOVETYPE_WALK)
 		end
 		ply:SetNWBool("GMAN_BF", false)
 	end
@@ -237,11 +235,19 @@ hook.Add("SetupMove","GMAN_BRIEFCASE_SPEED", function( ply, mv )
 	end
 end)
 
-local speed = 700
 hook.Add("Move", "GMAN_MOVE", function(ply, mv)
-	if ply:GetNWBool("GMAN_BF") then
+	if ply:GetNWBool("GMAN_BF") and ply:GetMoveType() == MOVETYPE_WALK then
 		local pos = Vector(0, 0, 0)
 		local ang = mv:GetMoveAngles()
+
+		local speed = 400
+		local inworld = util.IsInWorld(ply:GetPos()) and util.IsInWorld(ply:EyePos())
+		local movepos = not inworld or (ply.GMAN_WTimer and ply.GMAN_WTimer > CurTime())
+		if movepos then
+			speed = 10
+		elseif mv:KeyDown(IN_SPEED) then
+			speed = 800
+		end
 
 		if mv:KeyDown(IN_MOVERIGHT) then
 			pos:Add(ang:Right() * speed)
@@ -252,11 +258,11 @@ hook.Add("Move", "GMAN_MOVE", function(ply, mv)
 		end
 
 		if mv:KeyDown(IN_JUMP) then
-			pos:Add(ang:Up() * speed)
+			pos:Add(vector_up * speed)
 		end
 
 		if mv:KeyDown(IN_DUCK) then
-			pos:Add(-ang:Up() * speed)
+			pos:Add(-vector_up * speed)
 		end
 
 		if mv:KeyDown(IN_FORWARD) then
@@ -267,7 +273,14 @@ hook.Add("Move", "GMAN_MOVE", function(ply, mv)
 			pos:Add(-ang:Forward() * speed)
 		end
 
-		mv:SetVelocity(pos)
+		if movepos then
+			if not inworld then ply.GMAN_WTimer = CurTime() + .2 end
+			mv:SetOrigin(mv:GetOrigin() + pos)
+			mv:SetVelocity(vector_origin)
+		else
+			ply.GMAN_WTimer = nil
+			mv:SetVelocity(pos)
+		end
 	end
 end)
 
@@ -328,5 +341,11 @@ end)
 hook.Add("PlayerSwitchFlashlight", "GMAN_FLASHLIGHT", function(ply, bool)
 	if ply:GetNWBool("GMAN_BF") and bool then
 		return false
+	end
+end)
+
+hook.Add("PlayerFootstep", "GMAN_FOOTSTEP", function(ply)
+	if ply:GetNWBool("GMAN_BF") then
+		return true
 	end
 end)
