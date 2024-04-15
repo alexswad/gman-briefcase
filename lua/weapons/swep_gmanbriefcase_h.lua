@@ -3,6 +3,7 @@ SWEP.PrintName 		= "Gman (Hands Teleporting Only)"
 SWEP.Author 		= "Axel"
 SWEP.Instructions 	= "Left Click - Disappear / Right Click - Reappear"
 SWEP.Purpose 		= "why do you need this? is it a lore reason? are you stu-"
+SWEP.Category		= "Gman Briefcase"
 
 SWEP.Spawnable = true
 SWEP.AdminOnly = false

@@ -3,6 +3,7 @@ SWEP.PrintName 		= "Gman Briefcase"
 SWEP.Author 		= "Axel"
 SWEP.Instructions 	= "Left Click - Disappear / Right Click - Reappear"
 SWEP.Purpose 		= "Jesus Christ Marie! They're Minerals! Its filled with Minerals!"
+SWEP.Category		= "Gman Briefcase"
 
 SWEP.Spawnable = true
 SWEP.AdminOnly = false
@@ -28,8 +29,6 @@ function SWEP:Initialize()
 	if CLIENT and not IsValid(self.ClientModel) then
 		self.ClientModel = ClientsideModel(self.WorldModel)
 		self.ClientModel:SetNoDraw(true)
-		-- meme
-		self.Purpose = "Jesus Christ " .. LocalPlayer():Name() .. "! They're Minerals! Its filled with Minerals!"
 	end
 end
 
