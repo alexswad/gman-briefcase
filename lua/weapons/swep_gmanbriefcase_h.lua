@@ -10,55 +10,26 @@ SWEP.AdminOnly = false
 SWEP.ViewModel = "models/weapons/v_hands.mdl"
 SWEP.WorldModel = "models/weapons/w_suitcase_passenger.mdl"
 SWEP.Slot = 4
-SWEP.SlotPos = 5
+SWEP.SlotPos = 6
 
-SWEP.Primary.Ammo = ""
-SWEP.Primary.ClipSize = -1
-SWEP.Primary.DefaultClip = -1
-
-SWEP.Secondary.Ammo = ""
-SWEP.Secondary.ClipSize = -1
-SWEP.Secondary.DefaultClip = -1
-
-SWEP.DrawAmmo = false
-SWEP.DrawCrosshair = false
+SWEP.Base = "swep_gmanbriefcase"
 
 function SWEP:Initialize()
 	self:SetHoldType("normal")
 	self:SetNextPrimaryFire(CurTime() + 0.5)
 end
 
-function SWEP:DrawWorldModel(flags)
-end
-
 if CLIENT then
-	function SWEP:PrimaryAttack()
+	function SWEP:DrawWorldModel(flags)
 	end
-
-	function SWEP:SecondaryAttack()
-	end
-
-	function SWEP:Reload()
-	end
-
-	function SWEP:HUDShouldDraw( name )
-		if LocalPlayer():GetNWBool("GMAN_BF") then
-			if ( name == "CHudChat" ) then return true end
-			return false
-		end
-		return true
-	end
-
-	function SWEP:ShouldDrawViewModel()
-		return false
-	end
-
 elseif SERVER then
 	local function EnableNoclip(ply)
 		ply:SetNWBool("GMAN_BF", true)
 		ply:SetNoDraw(true)
-		ply:SetCollisionGroup(COLLISION_GROUP_WORLD)
+		ply:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
 		ply:SetNoTarget(true)
+		ply.GMAN_AP = ply:GetAvoidPlayers()
+		ply:SetAvoidPlayers(false)
 	end
 
 	local function DisableNoclip(ply)
@@ -66,6 +37,7 @@ elseif SERVER then
 			ply:SetNoDraw(false)
 			ply:SetCollisionGroup(COLLISION_GROUP_NONE)
 			ply:SetNoTarget(false)
+			ply:SetAvoidPlayers(ply.GMAN_AP or true)
 		end
 		ply:SetNWBool("GMAN_BF", false)
 	end
@@ -157,23 +129,5 @@ elseif SERVER then
 
 		self:SetNextSecondaryFire(CurTime() + 8)
 		self:SetNextPrimaryFire(CurTime() + 8)
-	end
-
-	function SWEP:OnDrop()
-		local owner = self:GetOwner()
-		if IsValid(owner) and owner:Alive() and owner:GetNWBool("GMAN_BF") then
-			owner:SetNWEntity("GMAN_ANIM", NULL)
-			DisableNoclip(owner)
-			owner:SetPos(self.LastGoodPos or owner:GetPos())
-		end
-	end
-
-	function SWEP:OnRemove()
-		local owner = self:GetOwner()
-		if IsValid(owner) and owner:Alive() and owner:GetNWBool("GMAN_BF") then
-			owner:SetNWEntity("GMAN_ANIM", NULL)
-			DisableNoclip(owner)
-			owner:SetPos(self.LastGoodPos or owner:GetPos())
-		end
 	end
 end

@@ -32,28 +32,28 @@ function SWEP:Initialize()
 	end
 end
 
-local offsetVec = Vector(5, -1, 0)
-local offsetAng = Angle(-90, 0, 0)
-function SWEP:DrawWorldModel(flags)
-	local owner = self:GetOwner()
-	if IsValid(owner) and not owner:GetNWBool("GMAN_BF") then
-		local boneid = owner:LookupBone("ValveBiped.Bip01_R_Hand") -- Right Hand
-		if not boneid then return end
-
-		local matrix = owner:GetBoneMatrix(boneid)
-		if not matrix then return end
-
-		local newPos, newAng = LocalToWorld(offsetVec, offsetAng, matrix:GetTranslation(), matrix:GetAngles())
-
-		self.ClientModel:SetPos(newPos)
-		self.ClientModel:SetAngles(newAng)
-		self.ClientModel:DrawModel()
-	else
-		self:DrawModel()
-	end
-end
-
 if CLIENT then
+	local offsetVec = Vector(5, -1, 0)
+	local offsetAng = Angle(-90, 0, 0)
+	function SWEP:DrawWorldModel(flags)
+		local owner = self:GetOwner()
+		if IsValid(owner) and not owner:GetNWBool("GMAN_BF") then
+			local boneid = owner:LookupBone("ValveBiped.Bip01_R_Hand") -- Right Hand
+			if not boneid then return end
+
+			local matrix = owner:GetBoneMatrix(boneid)
+			if not matrix then return end
+
+			local newPos, newAng = LocalToWorld(offsetVec, offsetAng, matrix:GetTranslation(), matrix:GetAngles())
+
+			self.ClientModel:SetPos(newPos)
+			self.ClientModel:SetAngles(newAng)
+			self.ClientModel:DrawModel()
+		else
+			self:DrawModel()
+		end
+	end
+
 	function SWEP:OnRemove()
 		self.ClientModel:Remove()
 	end
@@ -90,8 +90,10 @@ elseif SERVER then
 	local function EnableNoclip(ply)
 		ply:SetNWBool("GMAN_BF", true)
 		ply:SetNoDraw(true)
-		ply:SetCollisionGroup(COLLISION_GROUP_DISSOLVING)
+		ply:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
 		ply:SetNoTarget(true)
+		ply.GMAN_AP = ply:GetAvoidPlayers()
+		ply:SetAvoidPlayers(false)
 	end
 
 	local function DisableNoclip(ply)
@@ -99,6 +101,7 @@ elseif SERVER then
 			ply:SetNoDraw(false)
 			ply:SetCollisionGroup(COLLISION_GROUP_NONE)
 			ply:SetNoTarget(false)
+			ply:SetAvoidPlayers(ply.GMAN_AP or true)
 		end
 		ply:SetNWBool("GMAN_BF", false)
 	end
