@@ -1,9 +1,9 @@
-SWEP.PrintName 		= "Gman (Hands Teleporting Only)"
+SWEP.PrintName 		= "G-Man TP Hands"
 
 SWEP.Author 		= "Axel"
 SWEP.Instructions 	= "Left Click - Disappear / Right Click - Reappear"
-SWEP.Purpose 		= "why do you need this? is it a lore reason? are you stu-"
-SWEP.Category		= "Gman Briefcase"
+SWEP.Purpose 		= ""
+SWEP.Category		= "G-Man Briefcase"
 
 SWEP.Spawnable = true
 SWEP.AdminOnly = false
@@ -26,7 +26,7 @@ elseif SERVER then
 	local function EnableNoclip(ply)
 		ply:SetNWBool("GMAN_BF", true)
 		ply:SetNoDraw(true)
-		ply:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
+		ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 		ply:SetNoTarget(true)
 		ply.GMAN_AP = ply:GetAvoidPlayers()
 		ply:SetAvoidPlayers(false)
@@ -42,12 +42,7 @@ elseif SERVER then
 		ply:SetNWBool("GMAN_BF", false)
 	end
 
-	function SWEP:PrimaryAttack()
-		local owner = self:GetOwner()
-		if not IsValid(owner) or owner:GetNWBool("GMAN_BF") then return end
-		self:SetNextPrimaryFire(CurTime() + 3)
-		self.LastGoodPos = owner:GetPos()
-
+	local enterfunc = function(owner)
 		local tr = util.QuickTrace(owner:GetPos() + Vector(0, 0, 5), Angle(0, owner:EyeAngles().y, 0):Forward() * 60, function() return false end)
 		local a = ents.Create("anim_gmantele")
 		a:SetPos(owner:GetPos())
@@ -73,25 +68,29 @@ elseif SERVER then
 
 		timer.Simple(3, function()
 			if IsValid(a) and IsValid(owner) then
-				owner:SetPos(a:GetPos())
 				owner:SetNWEntity("GMAN_ANIM", NULL)
+				owner:SetEyeAngles(a:GetAngles())
 				SafeRemoveEntityDelayed(a, 4)
 			end
 		end)
+	end
+
+	function SWEP:PrimaryAttack()
+		local owner = self:GetOwner()
+		if not IsValid(owner) or owner:GetNWBool("GMAN_BF") then return end
+		self:SetNextPrimaryFire(CurTime() + 3)
+		self.LastGoodPos = owner:GetPos()
+
+		enterfunc(owner)
 
 		self:SetNextSecondaryFire(CurTime() + 8)
 		self:SetNextPrimaryFire(CurTime() + 8)
 	end
 
-	function SWEP:SecondaryAttack()
-		local owner = self:GetOwner()
-		if not IsValid(owner) or not owner:GetNWBool("GMAN_BF") then return end
-		self:SetNextSecondaryFire(CurTime() + 3)
-
+	local exitfunc = function(owner)
 		local tr = util.QuickTrace(owner:EyePos(), Angle(0, owner:EyeAngles().y, 0):Forward() * 60, {owner})
 		if tr.Hit then return end
 		tr = util.QuickTrace(owner:EyePos(), -owner:GetUp() * 128, {owner})
-		self.LastGoodPos = owner:GetPos()
 
 		local a = ents.Create("anim_gmantele_ex")
 		a:SetPos(tr.Hit and tr.HitPos + Vector(0, 0, 0.5) or owner:GetPos())
@@ -110,14 +109,14 @@ elseif SERVER then
 		owner:SetNWEntity("GMAN_ANIM", a)
 
 		timer.Simple(3.8, function()
-			if IsValid(a) and IsValid(owner) and IsValid(self) then
+			if IsValid(a) and IsValid(owner) then
 				owner:SetPos(a:GetPos())
 				owner:SetEyeAngles(a:GetAngles())
 			end
 		end)
 
 		timer.Simple(4, function()
-			if IsValid(a) and IsValid(owner) and IsValid(self) then
+			if IsValid(a) and IsValid(owner) then
 				owner:SetNWEntity("GMAN_ANIM", NULL)
 				DisableNoclip(owner)
 
@@ -126,8 +125,30 @@ elseif SERVER then
 				SafeRemoveEntityDelayed(a, 2)
 			end
 		end)
+	end
+
+	function SWEP:SecondaryAttack()
+		local owner = self:GetOwner()
+		if not IsValid(owner) or not owner:GetNWBool("GMAN_BF") then return end
+		self:SetNextSecondaryFire(CurTime() + 3)
+		self.LastGoodPos = owner:GetPos()
+
+		exitfunc(owner)
 
 		self:SetNextSecondaryFire(CurTime() + 8)
 		self:SetNextPrimaryFire(CurTime() + 8)
 	end
+
+	local admin = CreateConVar("gman_admin", "2", {FCVAR_ARCHIVE}, "0=Everyone, 1=Admins, 2=Superadmins", 0, 2)
+	concommand.Add("gman_enter", function(ply)
+		if not IsValid(ply) or ply:GetNWBool("GMAN_BF") then return end
+		if admin:GetInt() == 2 and not ply:IsSuperAdmin() or admin:GetInt() == 1 and not ply:IsAdmin() then return end
+		enterfunc(ply)
+	end)
+
+	concommand.Add("gman_exit", function(ply)
+		if not IsValid(ply) or not ply:GetNWBool("GMAN_BF") then return end
+		if admin:GetInt() == 2 and not ply:IsSuperAdmin() or admin:GetInt() == 1 and not ply:IsAdmin() then return end
+		exitfunc(ply)
+	end)
 end

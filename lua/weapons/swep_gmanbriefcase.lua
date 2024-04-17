@@ -1,9 +1,10 @@
-SWEP.PrintName 		= "Gman Briefcase"
+SWEP.PrintName 		= "G-Man Briefcase"
 
 SWEP.Author 		= "Axel"
 SWEP.Instructions 	= "Left Click - Disappear / Right Click - Reappear"
-SWEP.Purpose 		= "Jesus Christ Marie! They're Minerals! Its filled with Minerals!"
-SWEP.Category		= "Gman Briefcase"
+SWEP.Purpose 		= ""
+SWEP.Category		= "G-Man Briefcase"
+SWEP.GMAN			= true
 
 SWEP.Spawnable = true
 SWEP.AdminOnly = false
@@ -69,20 +70,25 @@ if CLIENT then
 	function SWEP:Reload()
 	end
 
-	function SWEP:HUDShouldDraw( name )
-		if LocalPlayer():GetNWBool("GMAN_BF") then
-			if ( name == "CHudChat" ) then return true end
-			return false
-		end
-		return true
-	end
-
 	function SWEP:ShouldDrawViewModel()
 		return false
 	end
 
+	hook.Add("HUDShouldDraw", "GMAN_HUD", function(name)
+		if IsValid(LocalPlayer()) and LocalPlayer():GetNWBool("GMAN_BF") then
+			if ( name == "CHudChat" ) then return true end
+			return false
+		end
+	end)
+
+	hook.Add("PreDrawViewModel", "GMAN_VM", function(name)
+		if IsValid(LocalPlayer()) and LocalPlayer():GetNWBool("GMAN_BF") then
+			return true
+		end
+	end)
+
 elseif SERVER then
-	SWEP.DoorSounds = {
+	local DoorSounds = {
 		"ambient/alarms/train_horn_distant1.wav",
 		"ambient/alarms/apc_alarm_pass1.wav",
 		"ambient/alarms/manhack_alert_pass1.wav",
@@ -92,7 +98,7 @@ elseif SERVER then
 	local function EnableNoclip(ply)
 		ply:SetNWBool("GMAN_BF", true)
 		ply:SetNoDraw(true)
-		ply:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
+		ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 		ply:SetNoTarget(true)
 		ply.GMAN_AP = ply:GetAvoidPlayers()
 		ply:SetAvoidPlayers(false)
@@ -108,13 +114,7 @@ elseif SERVER then
 		ply:SetNWBool("GMAN_BF", false)
 	end
 
-	function SWEP:PrimaryAttack()
-		local owner = self:GetOwner()
-		owner:SetCollisionGroup(COLLISION_GROUP_VEHICLE_CLIP)
-		if not IsValid(owner) or owner:GetNWBool("GMAN_BF") then return end
-		self:SetNextPrimaryFire(CurTime() + 3)
-		self.LastGoodPos = owner:GetPos()
-
+	local enterfunc = function(owner)
 		local tr = util.QuickTrace(owner:GetPos() + Vector(0, 0, 5), Angle(0, owner:EyeAngles().y, 0):Forward() * 60, function() return false end)
 		local a = ents.Create("anim_gmantele")
 		a:SetPos(owner:GetPos())
@@ -129,8 +129,8 @@ elseif SERVER then
 		math.randomseed(SysTime() + a:GetCreationID())
 		local snd = math.random(1, 20)
 
-		if self.DoorSounds[snd] then
-			a:EmitSound(self.DoorSounds[snd], 65, 96, 1, CHAN_AUTO, SND_NOFLAGS, 133)
+		if DoorSounds[snd] then
+			a:EmitSound(DoorSounds[snd], 65, 96, 1, CHAN_AUTO, SND_NOFLAGS, 133)
 		end
 
 		if tr.Hit then
@@ -146,26 +146,29 @@ elseif SERVER then
 
 		timer.Simple(4, function()
 			if IsValid(a) and IsValid(owner) then
-				owner:SetPos(a:GetPos())
 				owner:SetNWEntity("GMAN_ANIM", NULL)
+				owner:SetEyeAngles(a:GetAngles())
 				SafeRemoveEntityDelayed(a, 4)
 			end
 		end)
+	end
 
+	function SWEP:PrimaryAttack()
+		local owner = self:GetOwner()
+		if not IsValid(owner) or owner:GetNWBool("GMAN_BF") then return end
+		self:SetNextPrimaryFire(CurTime() + 3)
+		self.LastGoodPos = owner:GetPos()
+
+		enterfunc(owner)
 
 		self:SetNextSecondaryFire(CurTime() + 8)
 		self:SetNextPrimaryFire(CurTime() + 8)
 	end
 
-	function SWEP:SecondaryAttack()
-		local owner = self:GetOwner()
-		if not IsValid(owner) or not owner:GetNWBool("GMAN_BF") then return end
-		self:SetNextSecondaryFire(CurTime() + 3)
-
+	local exitfunc = function(owner)
 		local tr = util.QuickTrace(owner:EyePos(), Angle(0, owner:EyeAngles().y, 0):Forward() * 60, {owner})
 		if tr.Hit then return end
 		tr = util.QuickTrace(owner:EyePos(), -owner:GetUp() * 128, {owner})
-		self.LastGoodPos = owner:GetPos()
 
 		local a = ents.Create("anim_gmantele_ex")
 		a:SetPos(tr.Hit and tr.HitPos + Vector(0, 0, 0.5) or owner:GetPos())
@@ -180,8 +183,8 @@ elseif SERVER then
 		math.randomseed(CurTime() + a:GetCreationID())
 		local snd = math.random(1, 20)
 
-		if self.DoorSounds[snd] then
-			a:EmitSound(self.DoorSounds[snd], 65, 96, 1, CHAN_AUTO, SND_NOFLAGS, 133)
+		if DoorSounds[snd] then
+			a:EmitSound(DoorSounds[snd], 65, 96, 1, CHAN_AUTO, SND_NOFLAGS, 133)
 		end
 
 		a:SetAngles(Angle(0, owner:EyeAngles().y, 0))
@@ -190,14 +193,14 @@ elseif SERVER then
 		owner:SetNWEntity("GMAN_ANIM", a)
 
 		timer.Simple(3.8, function()
-			if IsValid(a) and IsValid(owner) and IsValid(self) then
+			if IsValid(a) and IsValid(owner) then
 				owner:SetPos(a:GetPos())
 				owner:SetEyeAngles(a:GetAngles())
 			end
 		end)
 
 		timer.Simple(4, function()
-			if IsValid(a) and IsValid(owner) and IsValid(self) then
+			if IsValid(a) and IsValid(owner) then
 				owner:SetNWEntity("GMAN_ANIM", NULL)
 				DisableNoclip(owner)
 
@@ -206,7 +209,15 @@ elseif SERVER then
 				SafeRemoveEntityDelayed(a, 2)
 			end
 		end)
+	end
 
+	function SWEP:SecondaryAttack()
+		local owner = self:GetOwner()
+		if not IsValid(owner) or not owner:GetNWBool("GMAN_BF") then return end
+		self:SetNextSecondaryFire(CurTime() + 3)
+		self.LastGoodPos = owner:GetPos()
+
+		exitfunc(owner)
 
 		self:SetNextSecondaryFire(CurTime() + 8)
 		self:SetNextPrimaryFire(CurTime() + 8)
@@ -298,7 +309,12 @@ hook.Add("StartCommand", "GMAN_BF", function(ply, ucmd)
 	if IsValid(ply:GetNWEntity("GMAN_ANIM")) then
 		ucmd:ClearMovement()
 		ucmd:ClearButtons()
-		return true
+	end
+
+	if ply:GetNWBool("GMAN_BF") and not (IsValid(ply:GetActiveWeapon()) and ply:GetActiveWeapon().GMAN) then
+		ucmd:RemoveKey(IN_ATTACK)
+		ucmd:RemoveKey(IN_ATTACK2)
+		ucmd:RemoveKey(IN_RELOAD)
 	end
 end)
 
@@ -328,13 +344,24 @@ hook.Add("ShouldDrawLocalPlayer", "GMAN_DRAWPLY", function(ply)
 	if ply:GetNWBool("GMAN_BF") then return false end
 end)
 
+hook.Add("PostPlayerDeath", "HCP_RemoveRagdoll", function(ply)
+	if ply:GetNWBool("GMAN_BF") and IsValid(ply:GetRagdollEntity()) then
+		ply:GetRagdollEntity():Remove()
+	end
+end)
+
 hook.Add("CalcView", "GMAN_CALCVIEW", function(ply, origin, angles, fov)
 	local ent = ply:GetNWEntity("GMAN_ANIM")
 	if IsValid(ent) then
-		local no = ent:GetPos()  + ply:GetForward() * 130
+		local org = ent:GetPos() + Vector(0, 0, 60)
+		local dir = ply:GetForward() * 130
+		local tr = util.QuickTrace(org, dir, {ent, ply})
+
+		local np = tr.HitPos
+
 		return {
-			origin = no + Vector(0, 0, 60),
-			angles = (ent:GetPos() - no):Angle(),
+			origin = np,
+			angles = (org - np):Angle(),
 			fov = fov,
 			drawviewer = false,
 			drawviewmodel = false,
