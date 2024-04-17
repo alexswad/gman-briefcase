@@ -352,7 +352,7 @@ end)
 
 hook.Add("CalcView", "GMAN_CALCVIEW", function(ply, origin, angles, fov)
 	local ent = ply:GetNWEntity("GMAN_ANIM")
-	if IsValid(ent) then
+	if IsValid(ent) and not (IsValid(ply:GetViewEntity()) and ply:GetViewEntity() ~= ply) then
 		local org = ent:GetPos() + Vector(0, 0, 60)
 		local dir = ply:GetForward() * 130
 		local tr = util.QuickTrace(org, dir, {ent, ply})
