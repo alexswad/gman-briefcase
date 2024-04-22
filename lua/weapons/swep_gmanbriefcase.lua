@@ -1,4 +1,4 @@
-SWEP.PrintName 		= "G-Man Briefcase"
+SWEP.PrintName 		= "G-Man Suitcase"
 
 SWEP.Author 		= "Axel"
 SWEP.Instructions 	= "Left Click - Disappear / Right Click - Reappear"
@@ -23,6 +23,8 @@ SWEP.Secondary.DefaultClip = -1
 
 SWEP.DrawAmmo = false
 SWEP.DrawCrosshair = false
+SWEP.offsetVec = Vector(5, -1, 0)
+SWEP.offsetAng = Angle(-90, 0, 0)
 
 function SWEP:Initialize()
 	self:SetHoldType("normal")
@@ -34,8 +36,6 @@ function SWEP:Initialize()
 end
 
 if CLIENT then
-	local offsetVec = Vector(5, -1, 0)
-	local offsetAng = Angle(-90, 0, 0)
 	function SWEP:DrawWorldModel(flags)
 		local owner = self:GetOwner()
 		if IsValid(owner) and not owner:GetNWBool("GMAN_BF") then
@@ -45,7 +45,7 @@ if CLIENT then
 			local matrix = owner:GetBoneMatrix(boneid)
 			if not matrix then return end
 
-			local newPos, newAng = LocalToWorld(offsetVec, offsetAng, matrix:GetTranslation(), matrix:GetAngles())
+			local newPos, newAng = LocalToWorld(self.offsetVec, self.offsetAng, matrix:GetTranslation(), matrix:GetAngles())
 
 			self.ClientModel:SetPos(newPos)
 			self.ClientModel:SetAngles(newAng)
@@ -88,6 +88,8 @@ if CLIENT then
 	end)
 
 elseif SERVER then
+	local noclip = CreateConVar("gman_noclip", "0", {FCVAR_ARCHIVE}, "0=Collisions while Teleporting, 1=Noclipping", 0, 2)
+
 	local DoorSounds = {
 		"ambient/alarms/train_horn_distant1.wav",
 		"ambient/alarms/apc_alarm_pass1.wav",
@@ -96,6 +98,9 @@ elseif SERVER then
 	}
 
 	local function EnableNoclip(ply)
+		if noclip:GetBool() then
+			ply:SetMoveType(MOVETYPE_NOCLIP)
+		end
 		ply:SetNWBool("GMAN_BF", true)
 		ply:SetNoDraw(true)
 		ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
@@ -106,6 +111,7 @@ elseif SERVER then
 
 	local function DisableNoclip(ply)
 		if ply:GetNWBool("GMAN_BF") then
+			ply:SetMoveType(MOVETYPE_WALK)
 			ply:SetNoDraw(false)
 			ply:SetCollisionGroup(COLLISION_GROUP_NONE)
 			ply:SetNoTarget(false)
@@ -114,7 +120,7 @@ elseif SERVER then
 		ply:SetNWBool("GMAN_BF", false)
 	end
 
-	local enterfunc = function(owner)
+	local enterfunc = function(owner, type)
 		local tr = util.QuickTrace(owner:GetPos() + Vector(0, 0, 5), Angle(0, owner:EyeAngles().y, 0):Forward() * 60, function() return false end)
 		local a = ents.Create("anim_gmantele")
 		a:SetPos(owner:GetPos())
@@ -132,6 +138,8 @@ elseif SERVER then
 		if DoorSounds[snd] then
 			a:EmitSound(DoorSounds[snd], 65, 96, 1, CHAN_AUTO, SND_NOFLAGS, 133)
 		end
+
+		if type then a:SetBriefType(type) end
 
 		if tr.Hit then
 			a:SetAngles(Angle(0, (-tr.HitNormal):Angle().y, 0))
@@ -159,13 +167,13 @@ elseif SERVER then
 		self:SetNextPrimaryFire(CurTime() + 3)
 		self.LastGoodPos = owner:GetPos()
 
-		enterfunc(owner)
+		enterfunc(owner, self.BriefType)
 
 		self:SetNextSecondaryFire(CurTime() + 8)
 		self:SetNextPrimaryFire(CurTime() + 8)
 	end
 
-	local exitfunc = function(owner)
+	local exitfunc = function(owner, type)
 		local tr = util.QuickTrace(owner:EyePos(), Angle(0, owner:EyeAngles().y, 0):Forward() * 60, {owner})
 		if tr.Hit then return end
 		tr = util.QuickTrace(owner:EyePos(), -owner:GetUp() * 128, {owner})
@@ -186,6 +194,8 @@ elseif SERVER then
 		if DoorSounds[snd] then
 			a:EmitSound(DoorSounds[snd], 65, 96, 1, CHAN_AUTO, SND_NOFLAGS, 133)
 		end
+
+		if type then a:SetBriefType(type) end
 
 		a:SetAngles(Angle(0, owner:EyeAngles().y, 0))
 		a:Spawn()
@@ -217,7 +227,7 @@ elseif SERVER then
 		self:SetNextSecondaryFire(CurTime() + 3)
 		self.LastGoodPos = owner:GetPos()
 
-		exitfunc(owner)
+		exitfunc(owner, self.BriefType)
 
 		self:SetNextSecondaryFire(CurTime() + 8)
 		self:SetNextPrimaryFire(CurTime() + 8)
@@ -344,7 +354,7 @@ hook.Add("ShouldDrawLocalPlayer", "GMAN_DRAWPLY", function(ply)
 	if ply:GetNWBool("GMAN_BF") then return false end
 end)
 
-hook.Add("PostPlayerDeath", "HCP_RemoveRagdoll", function(ply)
+hook.Add("PostPlayerDeath", "GMAN_RAGDOLL", function(ply)
 	if ply:GetNWBool("GMAN_BF") and IsValid(ply:GetRagdollEntity()) then
 		ply:GetRagdollEntity():Remove()
 	end
@@ -399,3 +409,16 @@ hook.Add("OnEntityCreated", "GMAN_NEXTBOTFIX", function(ent)
 		end
 	end
 end)
+
+local checkwep = function(ply, str)
+	if str == "swep_gmanbriefcase_b" and not util.IsValidModel("models/gman_briefcase.mdl") then
+		if IsValid(ply) and not ply.GMAN_CHAT then
+			ply:ChatPrint("The server is missing the required addon for this weapon to work!")
+			ply:ChatPrint("You can download it at: https://steamcommunity.com/sharedfiles/filedetails/?id=3218879194")
+		end
+		ply.GMAN_CHAT = true
+		return false
+	end
+end
+hook.Add("PlayerGiveSWEP", "GMAN_CHECKSWEP", checkwep)
+hook.Add("PlayerSpawnSWEP", "GMAN_CHECKSWEP", checkwep)

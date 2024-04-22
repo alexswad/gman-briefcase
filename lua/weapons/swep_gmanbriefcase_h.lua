@@ -1,4 +1,4 @@
-SWEP.PrintName 		= "G-Man TP Hands"
+SWEP.PrintName 		= "G-Man Hands"
 
 SWEP.Author 		= "Axel"
 SWEP.Instructions 	= "Left Click - Disappear / Right Click - Reappear"
@@ -23,7 +23,12 @@ if CLIENT then
 	function SWEP:DrawWorldModel(flags)
 	end
 elseif SERVER then
+	local noclip
 	local function EnableNoclip(ply)
+		noclip = noclip or GetConVar("gman_noclip")
+		if noclip:GetBool() then
+			ply:SetMoveType(MOVETYPE_NOCLIP)
+		end
 		ply:SetNWBool("GMAN_BF", true)
 		ply:SetNoDraw(true)
 		ply:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
@@ -35,6 +40,7 @@ elseif SERVER then
 	local function DisableNoclip(ply)
 		if ply:GetNWBool("GMAN_BF") then
 			ply:SetNoDraw(false)
+			ply:SetMoveType(MOVETYPE_WALK)
 			ply:SetCollisionGroup(COLLISION_GROUP_NONE)
 			ply:SetNoTarget(false)
 			ply:SetAvoidPlayers(ply.GMAN_AP or true)
@@ -48,7 +54,7 @@ elseif SERVER then
 		a:SetPos(owner:GetPos())
 		a:SetModel(owner:GetModel())
 		a:SetPlayerColor(owner:GetPlayerColor())
-		a:SetNoBrief(true)
+		a:SetBriefType(1)
 
 		for k, v in pairs(owner:GetBodyGroups()) do
 			a:SetBodygroup(v.id, owner:GetBodygroup(v.id))
@@ -96,7 +102,7 @@ elseif SERVER then
 		a:SetPos(tr.Hit and tr.HitPos + Vector(0, 0, 0.5) or owner:GetPos())
 		a:SetModel(owner:GetModel())
 		a:SetPlayerColor(owner:GetPlayerColor())
-		a:SetNoBrief(true)
+		a:SetBriefType(1)
 
 		for k, v in pairs(owner:GetBodyGroups()) do
 			a:SetBodygroup(v.id, owner:GetBodygroup(v.id))

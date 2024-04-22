@@ -20,8 +20,16 @@ ENT.FullyOpen = "doors/door_metal_thin_open1.wav"
 function ENT:SetupDataTables()
 	self:NetworkVar("Float", 0, "EndDoorTime")
 	self:NetworkVar("Bool", 0, "Close")
-	self:NetworkVar("Bool", 1, "NoBrief")
+	self:NetworkVar("Int", 0, "BriefType")
 	self:NetworkVar("Vector", 0, "PlayerColor")
+end
+
+function ENT:GetNoBrief()
+	return self:GetBriefType() == 1
+end
+
+function ENT:GetGMANBrief()
+	return self:GetBriefType() == 2
 end
 
 if SERVER then
@@ -198,6 +206,12 @@ if CLIENT then
 	local offsetAng = Angle(-90, 0, 0)
 	function ENT:DrawBriefcase()
 		if self:GetNoBrief() then return end
+		if self:GetGMANBrief() and not self.ModelRep then
+			self.ModelRep = true
+			self.ClientModel:SetModel("models/gman_briefcase.mdl")
+			offsetVec = Vector(20, -1, 0)
+		end
+
 		local boneid = self:LookupBone("ValveBiped.Bip01_R_Hand") -- Right Hand
 		if not boneid or not IsValid(self.ClientModel) then return end
 
