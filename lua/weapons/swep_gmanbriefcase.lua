@@ -47,9 +47,11 @@ if CLIENT then
 
 			local newPos, newAng = LocalToWorld(self.offsetVec, self.offsetAng, matrix:GetTranslation(), matrix:GetAngles())
 
-			self.ClientModel:SetPos(newPos)
-			self.ClientModel:SetAngles(newAng)
-			self.ClientModel:DrawModel()
+			if IsValid(self.ClientModel) then
+				self.ClientModel:SetPos(newPos)
+				self.ClientModel:SetAngles(newAng)
+				self.ClientModel:DrawModel()
+			end
 		else
 			self:DrawModel()
 		end
