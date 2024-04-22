@@ -200,14 +200,14 @@ if CLIENT then
 		self:DrawTranslucent()
 	end
 
-	local offsetVec = Vector(5, -1, 0)
-	local offsetAng = Angle(-90, 0, 0)
+	ENT.offsetVec = Vector(5, -1, 0)
+	ENT.offsetAng = Angle(-90, 0, 0)
 	function ENT:DrawBriefcase()
 		if self:GetNoBrief() or not IsValid(self.ClientModel) then return end
 		if self:GetGMANBrief() and not self.ModelRep then
 			self.ModelRep = true
 			self.ClientModel:SetModel("models/gman_briefcase.mdl")
-			offsetVec = Vector(20, -1, 0)
+			self.offsetVec = Vector(20, -1, 0)
 		end
 
 		local boneid = self:LookupBone("ValveBiped.Bip01_R_Hand") -- Right Hand
@@ -216,7 +216,7 @@ if CLIENT then
 		local matrix = self:GetBoneMatrix(boneid)
 		if not matrix then return end
 
-		local newPos, newAng = LocalToWorld(offsetVec, offsetAng, matrix:GetTranslation(), matrix:GetAngles())
+		local newPos, newAng = LocalToWorld(self.offsetVec, self.offsetAng, matrix:GetTranslation(), matrix:GetAngles())
 
 		self.ClientModel.IsBrief = true
 		self.ClientModel:SetPos(newPos)
