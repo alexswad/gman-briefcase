@@ -202,8 +202,8 @@ if CLIENT then
 		self:DrawTranslucent()
 	end
 
-	SWEP.offsetVec = Vector(5, -1, 0)
-	SWEP.offsetAng = Angle(-90, 0, 0)
+	ENT.offsetVec = Vector(5, -1, 0)
+	ENT.offsetAng = Angle(-90, 0, 0)
 	function ENT:DrawBriefcase()
 		if self:GetNoBrief() or not IsValid(self.ClientModel) then return end
 		if self:GetGMANBrief() and not self.ModelRep then
