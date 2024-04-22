@@ -203,7 +203,7 @@ if CLIENT then
 	local offsetVec = Vector(5, -1, 0)
 	local offsetAng = Angle(-90, 0, 0)
 	function ENT:DrawBriefcase()
-		if self:GetNoBrief() then return end
+		if self:GetNoBrief() or not IsValid(self.ClientModel) then return end
 		if self:GetGMANBrief() and not self.ModelRep then
 			self.ModelRep = true
 			self.ClientModel:SetModel("models/gman_briefcase.mdl")
