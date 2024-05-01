@@ -161,18 +161,20 @@ elseif SERVER then
 				SafeRemoveEntityDelayed(a, 4)
 			end
 		end)
+
+		return true
 	end
 
 	function SWEP:PrimaryAttack()
 		local owner = self:GetOwner()
+		self:SetNextPrimaryFire(CurTime() + 0.5)
 		if not IsValid(owner) or owner:GetNWBool("GMAN_BF") then return end
-		self:SetNextPrimaryFire(CurTime() + 3)
 		self.LastGoodPos = owner:GetPos()
 
-		enterfunc(owner, self.BriefType)
-
-		self:SetNextSecondaryFire(CurTime() + 8)
-		self:SetNextPrimaryFire(CurTime() + 8)
+		if enterfunc(owner, self.BriefType) then
+			self:SetNextSecondaryFire(CurTime() + 6)
+			self:SetNextPrimaryFire(CurTime() + 6)
+		end
 	end
 
 	local exitfunc = function(owner, type)
@@ -221,18 +223,19 @@ elseif SERVER then
 				SafeRemoveEntityDelayed(a, 2)
 			end
 		end)
+		return true
 	end
 
 	function SWEP:SecondaryAttack()
 		local owner = self:GetOwner()
+		self:SetNextSecondaryFire(CurTime() + 0.5)
 		if not IsValid(owner) or not owner:GetNWBool("GMAN_BF") then return end
-		self:SetNextSecondaryFire(CurTime() + 3)
 		self.LastGoodPos = owner:GetPos()
 
-		exitfunc(owner, self.BriefType)
-
-		self:SetNextSecondaryFire(CurTime() + 8)
-		self:SetNextPrimaryFire(CurTime() + 8)
+		if exitfunc(owner, self.BriefType) then
+			self:SetNextSecondaryFire(CurTime() + 6)
+			self:SetNextPrimaryFire(CurTime() + 6)
+		end
 	end
 
 	function SWEP:OnDrop()
