@@ -8,7 +8,7 @@ SWEP.Category		= "G-Man Briefcase"
 SWEP.Spawnable = true
 SWEP.AdminOnly = false
 SWEP.ViewModel = "models/weapons/v_hands.mdl"
-SWEP.WorldModel = "models/weapons/w_suitcase_passenger.mdl"
+SWEP.WorldModel = "models/props_c17/SuitCase_Passenger_Physics.mdl"
 SWEP.Slot = 4
 SWEP.SlotPos = 6
 
@@ -116,14 +116,14 @@ elseif SERVER then
 
 		owner:SetNWEntity("GMAN_ANIM", a)
 
-		timer.Simple(3.8, function()
+		timer.Simple(3.2, function()
 			if IsValid(a) and IsValid(owner) then
 				owner:SetPos(a:GetPos())
 				owner:SetEyeAngles(a:GetAngles())
 			end
 		end)
 
-		timer.Simple(4, function()
+		timer.Simple(3.5, function()
 			if IsValid(a) and IsValid(owner) then
 				owner:SetNWEntity("GMAN_ANIM", NULL)
 				DisableNoclip(owner)
@@ -160,4 +160,7 @@ elseif SERVER then
 		if admin:GetInt() == 2 and not ply:IsSuperAdmin() or admin:GetInt() == 1 and not ply:IsAdmin() then return end
 		exitfunc(ply)
 	end)
+
+	function SWEP:Reload()
+	end
 end

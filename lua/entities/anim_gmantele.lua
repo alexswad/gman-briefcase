@@ -9,7 +9,7 @@ ENT.Author = "Axel"
 ENT.DoNotDuplicate = true
 ENT.PhysgunDisabled = true
 ENT.AutomaticFrameAdvance = true
-ENT.WorldModel = "models/weapons/w_suitcase_passenger.mdl"
+ENT.WorldModel = "models/props_c17/SuitCase_Passenger_Physics.mdl"
 ENT.RenderGroup = RENDERGROUP_BOTH
 
 ENT.OpenSound = "doors/metal_move1.wav"

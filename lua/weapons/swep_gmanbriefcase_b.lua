@@ -1,12 +1,11 @@
 SWEP.PrintName 		= "G-Man Briefcase"
 
 SWEP.Author 		= "Axel"
-SWEP.Instructions 	= "Left Click - Disappear / Right Click - Reappear"
 SWEP.Purpose 		= ""
 SWEP.Category		= "G-Man Briefcase"
 
 SWEP.Spawnable = true
-SWEP.AdminOnly = false
+SWEP.AdminOnly = true
 SWEP.ViewModel = "models/weapons/v_hands.mdl"
 SWEP.WorldModel = "models/gman_briefcase.mdl"
 SWEP.BriefType = 2

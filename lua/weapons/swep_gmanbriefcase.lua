@@ -1,15 +1,15 @@
 SWEP.PrintName 		= "G-Man Suitcase"
 
 SWEP.Author 		= "Axel"
-SWEP.Instructions 	= "Left Click - Disappear / Right Click - Reappear"
+SWEP.Instructions 	= "Left Click - Disappear / Right Click - Reappear / Reload - Change Mode"
 SWEP.Purpose 		= ""
 SWEP.Category		= "G-Man Briefcase"
 SWEP.GMAN			= true
 
 SWEP.Spawnable = true
-SWEP.AdminOnly = false
+SWEP.AdminOnly = true
 SWEP.ViewModel = "models/weapons/v_hands.mdl"
-SWEP.WorldModel = "models/weapons/w_suitcase_passenger.mdl"
+SWEP.WorldModel = "models/props_c17/SuitCase_Passenger_Physics.mdl"
 SWEP.Slot = 4
 SWEP.SlotPos = 5
 
@@ -27,6 +27,7 @@ SWEP.offsetVec = Vector(5, -1, 0)
 SWEP.offsetAng = Angle(-90, 0, 0)
 
 function SWEP:Initialize()
+	self.Mode = 0
 	self:SetHoldType("normal")
 	self:SetNextPrimaryFire(CurTime() + 0.5)
 	if CLIENT and not IsValid(self.ClientModel) then
@@ -90,6 +91,7 @@ if CLIENT then
 	end)
 
 elseif SERVER then
+	resource.AddWorkshop("3218879194")
 	local noclip = CreateConVar("gman_noclip", "0", {FCVAR_ARCHIVE}, "0=Collisions while Teleporting, 1=Noclipping", 0, 2)
 
 	local DoorSounds = {
@@ -169,11 +171,22 @@ elseif SERVER then
 		local owner = self:GetOwner()
 		self:SetNextPrimaryFire(CurTime() + 0.5)
 		if not IsValid(owner) or owner:GetNWBool("GMAN_BF") then return end
-		self.LastGoodPos = owner:GetPos()
+		if self.Mode == 0 then
+			self.LastGoodPos = owner:GetPos()
 
-		if enterfunc(owner, self.BriefType) then
-			self:SetNextSecondaryFire(CurTime() + 6)
-			self:SetNextPrimaryFire(CurTime() + 6)
+			if enterfunc(owner, self.BriefType) then
+				self:SetNextSecondaryFire(CurTime() + 6)
+				self:SetNextPrimaryFire(CurTime() + 6)
+			end
+		elseif self.Mode == 1 then
+			self:SetHoldType("melee")
+			owner:SetAnimation(PLAYER_ATTACK1)
+			timer.Create("gman_resetholdtype_" .. owner:EntIndex(), 0.7, 1, function()
+				if not IsValid(self) then return end
+				self:SetHoldType("normal")
+			end)
+		elseif self.Mode == 2 then
+			
 		end
 	end
 
@@ -206,14 +219,14 @@ elseif SERVER then
 
 		owner:SetNWEntity("GMAN_ANIM", a)
 
-		timer.Simple(3.8, function()
+		timer.Simple(3.2, function()
 			if IsValid(a) and IsValid(owner) then
 				owner:SetPos(a:GetPos())
 				owner:SetEyeAngles(a:GetAngles())
 			end
 		end)
 
-		timer.Simple(4, function()
+		timer.Simple(3.5, function()
 			if IsValid(a) and IsValid(owner) then
 				owner:SetNWEntity("GMAN_ANIM", NULL)
 				DisableNoclip(owner)
@@ -247,6 +260,22 @@ elseif SERVER then
 		end
 	end
 
+	SWEP.Modes = {
+		[0] = "Materialize Self (Left Click - Disappear / Right Click - Reappear)",
+		[2] = "Teleport Other (Left Click - Teleport Target / Right Click - Set Destination) -- Note: Target must be looking at you",
+		[1] = "Attack (Left Click - Melee Attack / Right Click - Ranged Attack)",
+	}
+	function SWEP:Reload()
+		if self:GetOwner():GetNWBool("GMAN_BF") or self.NextMode and self.NextMode > CurTime() then return end
+
+		self.Mode = self.Mode + 1
+		if not self.Modes[self.Mode] then
+			self.Mode = 0
+		end
+		self:GetOwner():ChatPrint("Mode set to: [" .. self.Mode .. "] " .. self.Modes[self.Mode])
+		self.NextMode = CurTime() + 0.5
+	end
+
 	function SWEP:OnRemove()
 		local owner = self:GetOwner()
 		if IsValid(owner) and owner:Alive() and owner:GetNWBool("GMAN_BF") then
@@ -261,12 +290,6 @@ elseif SERVER then
 		DisableNoclip(ply)
 	end)
 end
-
-hook.Add("SetupMove","GMAN_BRIEFCASE_SPEED", function( ply, mv )
-	if IsValid(ply:GetActiveWeapon()) and ply:GetActiveWeapon():GetClass() == "swep_gmanbriefcase" then
-		mv:SetMaxClientSpeed(130)
-	end
-end)
 
 hook.Add("Move", "GMAN_MOVE", function(ply, mv)
 	if ply:GetNWBool("GMAN_BF") and ply:GetMoveType() == MOVETYPE_WALK then
@@ -341,11 +364,6 @@ hook.Add("PlayerSwitchWeapon", "GMAN_SWITCHWEAPON", function(ply, oldweapon)
 	if ply:GetNWBool("GMAN_BF") and IsValid(oldweapon) and oldweapon:GetClass() == "swep_gmanbriefcase" then return true end
 end)
 
-hook.Add("TranslateActivity", "GMAN_BRIEFCASE_SPEED_WALKANIM", function(ply, act)
-	if act == ACT_MP_WALK and IsValid(ply:GetActiveWeapon()) and ply:GetActiveWeapon():GetClass() == "swep_gmanbriefcase" then
-		return ACT_HL2MP_WALK_SUITCASE
-	end
-end)
 
 hook.Add("EntityTakeDamage", "GMAN_DAMAGE", function(ent, dmg)
 	if IsValid(ent) and ent:GetNWBool("GMAN_BF") then return true end
