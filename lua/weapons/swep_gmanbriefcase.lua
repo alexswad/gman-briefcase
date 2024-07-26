@@ -1,10 +1,11 @@
 SWEP.PrintName 		= "G-Man Suitcase"
 
-SWEP.Author 		= "Axel"
+SWEP.Author 		= "eskil"
 SWEP.Instructions 	= "Left Click - Disappear / Right Click - Reappear / Reload - Change Mode"
 SWEP.Purpose 		= ""
 SWEP.Category		= "G-Man Briefcase"
 SWEP.GMAN			= true
+SWEP.GMAN_DOOR		= true
 
 SWEP.Spawnable = true
 SWEP.AdminOnly = true
@@ -26,6 +27,10 @@ SWEP.DrawCrosshair = false
 SWEP.offsetVec = Vector(5, -1, 0)
 SWEP.offsetAng = Angle(-90, 0, 0)
 
+SWEP.Miss = Sound("Weapon_Crowbar.Single")
+SWEP.Hit = Sound("Weapon_Crowbar.Melee_Hit")
+
+
 function SWEP:Initialize()
 	self.Mode = 0
 	self:SetHoldType("normal")
@@ -34,6 +39,10 @@ function SWEP:Initialize()
 		self.ClientModel = ClientsideModel(self.WorldModel)
 		self.ClientModel:SetNoDraw(true)
 	end
+end
+
+function SWEP:SetupDataTables()
+	self:NetworkVar("Int", 0, "Mode")
 end
 
 if CLIENT then
@@ -91,6 +100,8 @@ if CLIENT then
 	end)
 
 elseif SERVER then
+	AccessorFunc(SWEP, "_door", "Door")
+
 	resource.AddWorkshop("3218879194")
 	local noclip = CreateConVar("gman_noclip", "0", {FCVAR_ARCHIVE}, "0=Collisions while Teleporting, 1=Noclipping", 0, 2)
 
@@ -180,13 +191,57 @@ elseif SERVER then
 			end
 		elseif self.Mode == 1 then
 			self:SetHoldType("melee")
-			owner:SetAnimation(PLAYER_ATTACK1)
+			timer.Simple(0.1, function()
+				owner:SetAnimation(PLAYER_ATTACK1)
+			end)
 			timer.Create("gman_resetholdtype_" .. owner:EntIndex(), 0.7, 1, function()
 				if not IsValid(self) then return end
 				self:SetHoldType("normal")
 			end)
+
+			local tr = util.QuickTrace(owner:GetShootPos(), owner:GetAimVector() * 100, owner)
+			if tr.Hit then
+				local melee = {
+					Attacker = owner,
+					Damage = 80,
+					Force = 999,
+					Distance = 110,
+					HullSize = 1,
+					Src = owner:GetShootPos(),
+					Dir = owner:GetAimVector(),
+					Num = 1,
+					Spread = Vector(0, 0, 0)
+				}
+				self:FireBullets(melee)
+				owner:EmitSound(self.Hit)
+			else
+				owner:EmitSound(self.Miss)
+			end
 		elseif self.Mode == 2 then
-			
+			local tr = util.QuickTrace(owner:GetShootPos(), owner:GetAimVector() * 500, owner)
+			if not IsValid(self:GetDoor()) and tr.Hit and tr.HitWorld and tr.HitNormal:IsEqualTol(Vector(0, 0, 1), 0.5) then
+				local door = ents.Create("gman_exterior")
+				local pos = tr.HitPos + tr.HitNormal * 2
+				door:SetAngles(Angle(0, (owner:GetPos() - pos):Angle().y, 0))
+				door:SetPos(pos)
+				Doors:SetupOwner(door, owner)
+				door:Spawn()
+				door:Activate()
+				door:SetOpen(true)
+				self:SetDoor(door)
+				self:DeleteOnRemove(door)
+				owner:ChatPrint("Door Opened")
+				door:EmitSound("doors/metal_move1.wav")
+			elseif IsValid(self:GetDoor()) then
+				self:GetDoor():SetOpen(not self:GetDoor():GetOpen())
+				if self:GetDoor():GetOpen() then
+					self:GetDoor():EmitSound("doors/metal_move1.wav")
+					owner:ChatPrint("Door Opened")
+				else
+					self:GetDoor():EmitSound("doors/door_metal_rusty_move1.wav")
+					owner:ChatPrint("Door Closed")
+				end
+			end
 		end
 	end
 
@@ -219,14 +274,14 @@ elseif SERVER then
 
 		owner:SetNWEntity("GMAN_ANIM", a)
 
-		timer.Simple(3.2, function()
+		timer.Simple(2.8, function()
 			if IsValid(a) and IsValid(owner) then
 				owner:SetPos(a:GetPos())
 				owner:SetEyeAngles(a:GetAngles())
 			end
 		end)
 
-		timer.Simple(3.5, function()
+		timer.Simple(3, function()
 			if IsValid(a) and IsValid(owner) then
 				owner:SetNWEntity("GMAN_ANIM", NULL)
 				DisableNoclip(owner)
@@ -242,12 +297,69 @@ elseif SERVER then
 	function SWEP:SecondaryAttack()
 		local owner = self:GetOwner()
 		self:SetNextSecondaryFire(CurTime() + 0.5)
-		if not IsValid(owner) or not owner:GetNWBool("GMAN_BF") then return end
-		self.LastGoodPos = owner:GetPos()
+		if not IsValid(owner) then return end
+		if self.Mode == 0 then
+			if not owner:GetNWBool("GMAN_BF") then return end
+			self.LastGoodPos = owner:GetPos()
 
-		if exitfunc(owner, self.BriefType) then
-			self:SetNextSecondaryFire(CurTime() + 6)
-			self:SetNextPrimaryFire(CurTime() + 6)
+			if exitfunc(owner, self.BriefType) then
+				self:SetNextSecondaryFire(CurTime() + 6)
+				self:SetNextPrimaryFire(CurTime() + 6)
+			end
+		elseif self.Mode == 1 then
+			self:SetHoldType("melee")
+			timer.Simple(0.1, function()
+				owner:SetAnimation(PLAYER_ATTACK1)
+			end)
+			timer.Create("gman_resetholdtype_" .. owner:EntIndex(), 0.7, 1, function()
+				if not IsValid(self) then return end
+				self:SetHoldType("normal")
+			end)
+
+			local tr = util.QuickTrace(owner:GetShootPos(), owner:GetAimVector() * 100, owner)
+			if tr.Hit then
+				local melee = {
+					Attacker = owner,
+					Damage = 80,
+					Force = 999,
+					Distance = 110,
+					HullSize = 1,
+					Src = owner:GetShootPos(),
+					Dir = owner:GetAimVector(),
+					Num = 1,
+					Spread = Vector(0, 0, 0)
+				}
+				self:FireBullets(melee)
+				owner:EmitSound(self.Hit)
+			else
+				owner:EmitSound(self.Miss)
+			end
+		elseif self.Mode == 2 then
+			local tr = util.QuickTrace(owner:GetShootPos(), owner:GetAimVector() * 1000, owner)
+			if not tr.Hit or not tr.HitWorld or not tr.HitNormal:IsEqualTol(Vector(0, 0, 1), 0.5) then return end
+
+			if not IsValid(self:GetDoor()) then
+				local door = ents.Create("gman_exterior")
+				local pos = tr.HitPos + tr.HitNormal
+				door:SetAngles(Angle(0, (owner:GetPos() - pos):Angle().y, 0))
+				door:SetPos(pos)
+				Doors:SetupOwner(door, owner)
+				self:DeleteOnRemove(door)
+				door:Spawn()
+				door:Activate()
+				self:SetDoor(door)
+				owner:ChatPrint("Door position set!")
+			else
+				local door = self:GetDoor()
+				if door:GetOpen() then
+					owner:ChatPrint("Door must be closed")
+					return
+				end
+				local pos = tr.HitPos + tr.HitNormal * 2
+				door:SetAngles(Angle(0, (owner:GetPos() - pos):Angle().y, 0))
+				door:SetPos(pos)
+				owner:ChatPrint("Door position set!")
+			end
 		end
 	end
 
@@ -261,10 +373,18 @@ elseif SERVER then
 	end
 
 	SWEP.Modes = {
-		[0] = "Materialize Self (Left Click - Disappear / Right Click - Reappear)",
-		[2] = "Teleport Other (Left Click - Teleport Target / Right Click - Set Destination) -- Note: Target must be looking at you",
-		[1] = "Attack (Left Click - Melee Attack / Right Click - Ranged Attack)",
+		[0] = "Ghost Self (Left Click - Disappear / Right Click - Reappear)",
+		[1] = "Attack (Left Click & Right Click - Melee Attack)",
+		[2] = "White Room Portal (Left Click - Open & Cloor Door / Right Click - Set Door Destination)",
+		--[3] = "Teleport Self (Left Click - Teleport into White Room / Right click - Teleport to White Room Exit)",
+		--[4] = "Teleport Other",
 	}
+
+	if not wp then
+		SWEP.Modes[2] = nil
+		SWEP.Modes[3] = nil
+	end
+
 	function SWEP:Reload()
 		if self:GetOwner():GetNWBool("GMAN_BF") or self.NextMode and self.NextMode > CurTime() then return end
 
@@ -272,6 +392,7 @@ elseif SERVER then
 		if not self.Modes[self.Mode] then
 			self.Mode = 0
 		end
+		self:SetMode(self.Mode)
 		self:GetOwner():ChatPrint("Mode set to: [" .. self.Mode .. "] " .. self.Modes[self.Mode])
 		self.NextMode = CurTime() + 0.5
 	end
@@ -433,15 +554,40 @@ hook.Add("OnEntityCreated", "GMAN_NEXTBOTFIX", function(ent)
 	end
 end)
 
+hook.Add("PostDrawTranslucentRenderables", "GMAN_WEAPON", function()
+	local wep = LocalPlayer():GetActiveWeapon()
+	if IsValid(wep) and wep.GMAN_DOOR and wep:GetMode() == 2 then
+		render.SetColorMaterial()
+		local tr = LocalPlayer():GetEyeTrace()
+		if not tr.Hit or not tr.HitWorld or tr.StartPos:DistToSqr(tr.HitPos) > 1000 * 1000 then return end
+		local pos = tr.HitPos
+		render.DrawWireframeSphere( pos, 0.5, 5, 5, Color( 175, 0, 0, 255) )
+	end
+end)
+
+
 local checkwep = function(ply, str)
+	if not wp and (str == "swep_gmanbriefcase_b" or str == "swep_gmanbriefcase") and IsValid(ply) and not ply.GMAN_DCHAT then
+		ply:ChatPrint("This addon now has Doors support!\nYou can download it at: https://steamcommunity.com/sharedfiles/filedetails/?id=499280258")
+		ply.GMAN_DCHAT = true
+	end
+
 	if str == "swep_gmanbriefcase_b" and not util.IsValidModel("models/gman_briefcase.mdl") then
-		if IsValid(ply) and not ply.GMAN_CHAT then
+		if IsValid(ply) and not ply.GMAN_BCHAT then
 			ply:ChatPrint("The server is missing the required addon for this weapon to work!")
 			ply:ChatPrint("You can download it at: https://steamcommunity.com/sharedfiles/filedetails/?id=3218879194")
 		end
-		ply.GMAN_CHAT = true
+		ply.GMAN_BCHAT = true
 		return false
 	end
 end
 hook.Add("PlayerGiveSWEP", "GMAN_CHECKSWEP", checkwep)
 hook.Add("PlayerSpawnSWEP", "GMAN_CHECKSWEP", checkwep)
+
+hook.Add("TranslateActivity", "GMAN_BRIEFCASE_SPEED_WALKANIM", function(ply, act)
+	local wep = ply:GetActiveWeapon()
+	if not IsValid(wep) or not (wep:GetClass() == "swep_gmanbriefcase" or wep:GetClass() == "swep_gmanbriefcase_b") then return end
+	if act == ACT_MP_WALK and wep:GetHoldType() == "normal" then
+		return ACT_HL2MP_WALK_SUITCASE
+	end
+end)

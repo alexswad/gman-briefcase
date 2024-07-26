@@ -72,7 +72,7 @@ elseif SERVER then
 		owner:Flashlight(false)
 		EnableNoclip(owner)
 
-		timer.Simple(3, function()
+		timer.Simple(2, function()
 			if IsValid(a) and IsValid(owner) then
 				owner:SetNWEntity("GMAN_ANIM", NULL)
 				owner:SetEyeAngles(a:GetAngles())
@@ -116,14 +116,14 @@ elseif SERVER then
 
 		owner:SetNWEntity("GMAN_ANIM", a)
 
-		timer.Simple(3.2, function()
+		timer.Simple(2.8, function()
 			if IsValid(a) and IsValid(owner) then
 				owner:SetPos(a:GetPos())
 				owner:SetEyeAngles(a:GetAngles())
 			end
 		end)
 
-		timer.Simple(3.5, function()
+		timer.Simple(3, function()
 			if IsValid(a) and IsValid(owner) then
 				owner:SetNWEntity("GMAN_ANIM", NULL)
 				DisableNoclip(owner)

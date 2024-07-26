@@ -1,6 +1,6 @@
 SWEP.PrintName 		= "G-Man Briefcase"
 
-SWEP.Author 		= "Axel"
+SWEP.Author 		= "eskil"
 SWEP.Purpose 		= ""
 SWEP.Category		= "G-Man Briefcase"
 

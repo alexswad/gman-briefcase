@@ -5,7 +5,7 @@ DEFINE_BASECLASS("base_anim")
 ENT.Type = "anim"
 ENT.Base = "base_anim"
 ENT.Spawnable = false
-ENT.Author = "Axel"
+ENT.Author = "eskil"
 ENT.DoNotDuplicate = true
 ENT.PhysgunDisabled = true
 ENT.AutomaticFrameAdvance = true
@@ -36,7 +36,7 @@ if SERVER then
 	function ENT:Initialize()
 		BaseClass.Initialize(self)
 		self:ResetSequence("idle_all_01")
-		self:SetEndDoorTime(CurTime() + 1.5)
+		self:SetEndDoorTime(CurTime() + 1)
 	end
 
 	function ENT:Think()
