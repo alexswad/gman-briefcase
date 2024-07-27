@@ -320,7 +320,13 @@ elseif SERVER then
 		local owner = self:GetOwner()
 		self:SetNextPrimaryFire(CurTime() + 0.5)
 		self:SetNextSecondaryFire(CurTime() + 0.5)
-		if not IsValid(owner) or owner:GetNWBool("GMAN_BF") then return end
+		if not IsValid(owner) then return end
+		if owner:GetNWBool("GMAN_BF") then
+			if not IsValid(self:GetDoor()) then return end
+			owner:SetPos(self:GetDoor().interior:GetPos() - Vector(0, 0, 32))
+			self:GetDoor():PlayerEnter(owner, true)
+			return
+		end
 		if self.Mode == 0 then
 			self.LastGoodPos = owner:GetPos()
 
@@ -328,6 +334,7 @@ elseif SERVER then
 				self:SetNextSecondaryFire(CurTime() + 4)
 				self:SetNextPrimaryFire(CurTime() + 5)
 			end
+			owner:ChatPrint("\nLeft Click - Teleport to White Room (If Available) / Reload - Teleport to Exit Door / Right Click - Reappear")
 		elseif self.Mode == 1 then
 			self:SetHoldType("melee")
 			timer.Simple(0.1, function()
@@ -542,7 +549,16 @@ elseif SERVER then
 	end
 
 	function SWEP:Reload()
-		if self:GetOwner():GetNWBool("GMAN_BF") or self.NextMode and self.NextMode > CurTime() then return end
+		local owner = self:GetOwner()
+		if not IsValid(owner) or self.NextMode and self.NextMode > CurTime() then return end
+
+		if owner:GetNWBool("GMAN_BF") then
+			if not IsValid(self:GetDoor()) then return end
+			owner:SetPos(self:GetDoor():GetPos())
+			self:GetDoor():PlayerExit(owner, true)
+			self.NextMode = CurTime() + 4
+			return
+		end
 
 		self.Mode = self.Mode + 1
 		if not self.Modes[self.Mode] then
@@ -664,7 +680,7 @@ hook.Add("CalcView", "GMAN_CALCVIEW", function(ply, origin, angles, fov)
 	local ent = ply:GetNWEntity("GMAN_ANIM")
 	if IsValid(ent) and not (IsValid(ply:GetViewEntity()) and ply:GetViewEntity() ~= ply) then
 		local org = ent:GetPos() + Vector(0, 0, 60)
-		local dir = ply:GetForward() * 130
+		local dir = ply:EyeAngles():Forward() * 130
 		local tr = util.QuickTrace(org, dir, {ent, ply})
 
 		local np = tr.HitPos

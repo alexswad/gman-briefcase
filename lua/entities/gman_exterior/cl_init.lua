@@ -25,8 +25,4 @@ hook.Add("PostDrawOpaqueRenderables", "gman_portals", function()
 	end
 end)
 
-ENT:AddHook("ShouldRenderPortal", "gman", function(self)
-	if self.t_tall == 0 then return false end
-end)
-
 ENT.CustomDrawModel = function(self) self:DrawShadow(false) end

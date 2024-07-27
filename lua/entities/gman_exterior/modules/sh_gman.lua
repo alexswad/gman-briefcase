@@ -8,3 +8,7 @@ end)
 ENT:AddHook("Initalize", "gman", function(self)
     self:SetOpen(false)
 end)
+
+ENT:AddHook("ShouldRenderPortal", "gman", function(self)
+    if self.t_tall == 0 then return false end
+end)
