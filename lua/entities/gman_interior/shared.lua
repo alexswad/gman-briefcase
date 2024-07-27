@@ -15,7 +15,7 @@ if not wp then
     return
 end
 
---ENT.Fallback = {pos = Vector(10, 0, 10)}
+ENT.Fallback = {pos = Vector(-190, -0, -35)}
 
 -- Hook system for modules
 function ENT:AddHook(name, id, func)

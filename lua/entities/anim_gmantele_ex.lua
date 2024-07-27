@@ -32,6 +32,10 @@ function ENT:GetGMANBrief()
 	return self:GetBriefType() == 2
 end
 
+function ENT:GetBMSBrief()
+	return self:GetBriefType() == 3
+end
+
 if SERVER then
 	function ENT:Initialize()
 		BaseClass.Initialize(self)
@@ -206,10 +210,17 @@ if CLIENT then
 	ENT.offsetAng = Angle(-90, 0, 0)
 	function ENT:DrawBriefcase()
 		if self:GetNoBrief() or not IsValid(self.ClientModel) then return end
-		if self:GetGMANBrief() and not self.ModelRep then
+		if not self.ModelRep and self:GetGMANBrief() then
 			self.ModelRep = true
 			self.ClientModel:SetModel("models/gman_briefcase.mdl")
 			self.offsetVec = Vector(20, -1, 0)
+		end
+
+		if not self.ModelRep and self:GetBMSBrief() then
+			self.ModelRep = true
+			self.ClientModel:SetModel("models/sketchfab/quaz30/g_man_briefcase/skf_g_man_briefcase.mdl")
+			self.offsetVec = Vector(12, 1, 0)
+			self.offsetAng = Angle(180, 0, -90)
 		end
 
 		local boneid = self:LookupBone("ValveBiped.Bip01_R_Hand") -- Right Hand

@@ -1,6 +1,6 @@
 SWEP.PrintName 		= "G-Man Hands"
 
-SWEP.Author 		= "Axel"
+SWEP.Author 		= "eskil"
 SWEP.Instructions 	= "Left Click - Disappear / Right Click - Reappear"
 SWEP.Purpose 		= ""
 SWEP.Category		= "G-Man Briefcase"

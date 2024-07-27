@@ -16,7 +16,7 @@ function ENT:SetupDataTables()
     self:NetworkVar("Bool", 0, "Open")
 end
 
---ENT.Fallback = {pos = Vector(0, 0, 0)}
+ENT.Fallback = {pos = Vector(0, 0, 3)}
 
 local class = string.sub(ENT.Folder, string.find(ENT.Folder, "/[^/]*$") + 1) -- only works if in a folder
 local hooks = {}

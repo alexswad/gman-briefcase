@@ -9,10 +9,18 @@ SWEP.GMAN_DOOR		= true
 
 SWEP.Spawnable = true
 SWEP.AdminOnly = true
-SWEP.ViewModel = "models/weapons/v_hands.mdl"
+SWEP.ViewModel = "models/props_c17/SuitCase_Passenger_Physics.mdl"
 SWEP.WorldModel = "models/props_c17/SuitCase_Passenger_Physics.mdl"
 SWEP.Slot = 4
 SWEP.SlotPos = 5
+
+SWEP.UseHands = false
+SWEP.ShowViewModel = true
+
+SWEP.ViewModelBoneMods = {
+	["SuitCase_Passenger1.Case_Mesh"] = { scale = Vector(0.61, 0.61, 0.61), pos = Vector(9.444, -6.481, 0), angle = Angle(1.11, 10, 0) }
+}
+
 
 SWEP.Primary.Ammo = ""
 SWEP.Primary.ClipSize = -1
@@ -28,6 +36,7 @@ SWEP.offsetVec = Vector(5, -1, 0)
 SWEP.offsetAng = Angle(-90, 0, 0)
 
 SWEP.Miss = Sound("Weapon_Crowbar.Single")
+SWEP.MissSecond = Sound("npc/zombie/claw_miss2.wav")
 SWEP.Hit = Sound("Weapon_Crowbar.Melee_Hit")
 
 
@@ -43,6 +52,7 @@ end
 
 function SWEP:SetupDataTables()
 	self:NetworkVar("Int", 0, "Mode")
+	self:NetworkVar("Entity", 0, "Door")
 end
 
 if CLIENT then
@@ -67,12 +77,6 @@ if CLIENT then
 		end
 	end
 
-	function SWEP:OnRemove()
-		if IsValid(self.ClientModel) then
-			self.ClientModel:Remove()
-		end
-	end
-
 	function SWEP:PrimaryAttack()
 	end
 
@@ -83,7 +87,7 @@ if CLIENT then
 	end
 
 	function SWEP:ShouldDrawViewModel()
-		return false
+		return true
 	end
 
 	hook.Add("HUDShouldDraw", "GMAN_HUD", function(name)
@@ -99,10 +103,138 @@ if CLIENT then
 		end
 	end)
 
-elseif SERVER then
-	AccessorFunc(SWEP, "_door", "Door")
+	function SWEP:Holster()
+		if CLIENT and IsValid(self:GetOwner()) then
+			local vm = self:GetOwner():GetViewModel()
+			if IsValid(vm) then
+				self:ResetBonePositions(vm)
+			end
+		end
+		return true
+	end
 
-	resource.AddWorkshop("3218879194")
+	function SWEP:OnRemove()
+		self:Holster()
+		if IsValid(self.ClientModel) then
+			self.ClientModel:Remove()
+		end
+	end
+
+	function SWEP:ViewModelDrawn()
+		local vm = self:GetOwner():GetViewModel()
+		if not IsValid(vm) then return end
+
+		self:UpdateBonePositions(vm)
+	end
+
+	function SWEP:GetBoneOrientation( basetab, tab, ent, bone_override )
+		local bone, pos, ang
+		if (tab.rel and tab.rel ~= "") then
+
+			local v = basetab[tab.rel]
+
+			if not v then return end
+
+			pos, ang = self:GetBoneOrientation( basetab, v, ent )
+
+			if not pos then return end
+
+			pos = pos + ang:Forward() * v.pos.x + ang:Right() * v.pos.y + ang:Up() * v.pos.z
+			ang:RotateAroundAxis(ang:Up(), v.angle.y)
+			ang:RotateAroundAxis(ang:Right(), v.angle.p)
+			ang:RotateAroundAxis(ang:Forward(), v.angle.r)
+
+		else
+
+			bone = ent:LookupBone(bone_override or tab.bone)
+
+			if not bone then return end
+
+			pos, ang = Vector(0,0,0), Angle(0,0,0)
+			local m = ent:GetBoneMatrix(bone)
+			if (m) then
+				pos, ang = m:GetTranslation(), m:GetAngles()
+			end
+
+			if (IsValid(self:GetOwner()) and self:GetOwner():IsPlayer() and
+				ent == self:GetOwner():GetViewModel() and self.ViewModelFlip) then
+				ang.r = -ang.r -- Fixes mirrored models
+			end
+		end
+
+		return pos, ang
+	end
+
+	local allbones
+	local hasGarryFixedBoneScalingYet = false
+
+	function SWEP:UpdateBonePositions(vm)
+
+		if self.ViewModelBoneMods then
+			if not vm:GetBoneCount() then return end
+			local loopthrough = self.ViewModelBoneMods
+			if not hasGarryFixedBoneScalingYet then
+				allbones = {}
+				for i = 0, vm:GetBoneCount() do
+					local bonename = vm:GetBoneName(i)
+					if (self.ViewModelBoneMods[bonename]) then
+						allbones[bonename] = self.ViewModelBoneMods[bonename]
+					else
+						allbones[bonename] = {
+							scale = Vector(1,1,1),
+							pos = Vector(0,0,0),
+							angle = Angle(0,0,0)
+						}
+					end
+				end
+
+				loopthrough = allbones
+			end
+
+			for k, v in pairs( loopthrough ) do
+				local bone = vm:LookupBone(k)
+				if not bone then continue end
+				local s = Vector(v.scale.x,v.scale.y,v.scale.z)
+				local p = Vector(v.pos.x,v.pos.y,v.pos.z)
+				local ms = Vector(1,1,1)
+				if not hasGarryFixedBoneScalingYet then
+					local cur = vm:GetBoneParent(bone)
+					while (cur >= 0) do
+						local pscale = loopthrough[vm:GetBoneName(cur)].scale
+						ms = ms * pscale
+						cur = vm:GetBoneParent(cur)
+					end
+				end
+
+				s = s * ms
+
+				if vm:GetManipulateBoneScale(bone) ~= s then
+					vm:ManipulateBoneScale( bone, s )
+				end
+				if vm:GetManipulateBoneAngles(bone) ~= v.angle then
+					vm:ManipulateBoneAngles( bone, v.angle )
+				end
+				if vm:GetManipulateBonePosition(bone) ~= p then
+					vm:ManipulateBonePosition( bone, p )
+				end
+			end
+		else
+			self:ResetBonePositions(vm)
+		end
+
+	end
+
+	function SWEP:ResetBonePositions(vm)
+
+		if not vm:GetBoneCount() then return end
+		for i = 0, vm:GetBoneCount() do
+			vm:ManipulateBoneScale( i, Vector(1, 1, 1) )
+			vm:ManipulateBoneAngles( i, Angle(0, 0, 0) )
+			vm:ManipulateBonePosition( i, Vector(0, 0, 0) )
+		end
+
+	end
+elseif SERVER then
 	local noclip = CreateConVar("gman_noclip", "0", {FCVAR_ARCHIVE}, "0=Collisions while Teleporting, 1=Noclipping", 0, 2)
 
 	local DoorSounds = {
@@ -133,6 +265,10 @@ elseif SERVER then
 			ply:SetAvoidPlayers(ply.GMAN_AP or true)
 		end
 		ply:SetNWBool("GMAN_BF", false)
+	end
+
+	function SWEP:Deploy()
+		self:GetOwner():ChatPrint("Current Mode: [" .. self.Mode .. "] " .. self.Modes[self.Mode])
 	end
 
 	local enterfunc = function(owner, type)
@@ -181,6 +317,7 @@ elseif SERVER then
 	function SWEP:PrimaryAttack()
 		local owner = self:GetOwner()
 		self:SetNextPrimaryFire(CurTime() + 0.5)
+		self:SetNextSecondaryFire(CurTime() + 0.5)
 		if not IsValid(owner) or owner:GetNWBool("GMAN_BF") then return end
 		if self.Mode == 0 then
 			self.LastGoodPos = owner:GetPos()
@@ -198,13 +335,14 @@ elseif SERVER then
 				if not IsValid(self) then return end
 				self:SetHoldType("normal")
 			end)
+			owner:ViewPunch(Angle(5, 1, 0))
 
 			local tr = util.QuickTrace(owner:GetShootPos(), owner:GetAimVector() * 100, owner)
 			if tr.Hit then
 				local melee = {
 					Attacker = owner,
-					Damage = 80,
-					Force = 999,
+					Damage = 50,
+					Force = 20,
 					Distance = 110,
 					HullSize = 1,
 					Src = owner:GetShootPos(),
@@ -214,10 +352,14 @@ elseif SERVER then
 				}
 				self:FireBullets(melee)
 				owner:EmitSound(self.Hit)
+				if IsValid(tr.Entity) then
+					owner:EmitSound("npc/zombie/claw_strike3")
+				end
 			else
 				owner:EmitSound(self.Miss)
 			end
 		elseif self.Mode == 2 then
+			self:SetNextSecondaryFire(CurTime() + 1)
 			local tr = util.QuickTrace(owner:GetShootPos(), owner:GetAimVector() * 500, owner)
 			if not IsValid(self:GetDoor()) and tr.Hit and tr.HitWorld and tr.HitNormal:IsEqualTol(Vector(0, 0, 1), 0.5) then
 				local door = ents.Create("gman_exterior")
@@ -296,6 +438,7 @@ elseif SERVER then
 
 	function SWEP:SecondaryAttack()
 		local owner = self:GetOwner()
+		self:SetNextPrimaryFire(CurTime() + 0.5)
 		self:SetNextSecondaryFire(CurTime() + 0.5)
 		if not IsValid(owner) then return end
 		if self.Mode == 0 then
@@ -316,11 +459,13 @@ elseif SERVER then
 				self:SetHoldType("normal")
 			end)
 
+			owner:ViewPunch(Angle(9, 1, 0))
+
 			local tr = util.QuickTrace(owner:GetShootPos(), owner:GetAimVector() * 100, owner)
 			if tr.Hit then
 				local melee = {
 					Attacker = owner,
-					Damage = 80,
+					Damage = 500,
 					Force = 999,
 					Distance = 110,
 					HullSize = 1,
@@ -331,16 +476,21 @@ elseif SERVER then
 				}
 				self:FireBullets(melee)
 				owner:EmitSound(self.Hit)
+				if IsValid(tr.Entity) then
+					owner:EmitSound("npc/zombie/claw_strike1.wav")
+				end
 			else
-				owner:EmitSound(self.Miss)
+				owner:EmitSound(self.MissSecond)
 			end
 		elseif self.Mode == 2 then
+			self:SetNextPrimaryFire(CurTime() + 0.2)
+			self:SetNextSecondaryFire(CurTime() + 0.2)
 			local tr = util.QuickTrace(owner:GetShootPos(), owner:GetAimVector() * 1000, owner)
 			if not tr.Hit or not tr.HitWorld or not tr.HitNormal:IsEqualTol(Vector(0, 0, 1), 0.5) then return end
 
 			if not IsValid(self:GetDoor()) then
 				local door = ents.Create("gman_exterior")
-				local pos = tr.HitPos + tr.HitNormal
+				local pos = tr.HitPos + tr.HitNormal * 2
 				door:SetAngles(Angle(0, (owner:GetPos() - pos):Angle().y, 0))
 				door:SetPos(pos)
 				Doors:SetupOwner(door, owner)
@@ -348,17 +498,17 @@ elseif SERVER then
 				door:Spawn()
 				door:Activate()
 				self:SetDoor(door)
-				owner:ChatPrint("Door position set!")
+				owner:ChatPrint("Door Position Set!")
 			else
 				local door = self:GetDoor()
 				if door:GetOpen() then
-					owner:ChatPrint("Door must be closed")
+					owner:ChatPrint("Door Must Be Closed!")
 					return
 				end
 				local pos = tr.HitPos + tr.HitNormal * 2
 				door:SetAngles(Angle(0, (owner:GetPos() - pos):Angle().y, 0))
 				door:SetPos(pos)
-				owner:ChatPrint("Door position set!")
+				owner:ChatPrint("Door Position Set!")
 			end
 		end
 	end
@@ -558,10 +708,16 @@ hook.Add("PostDrawTranslucentRenderables", "GMAN_WEAPON", function()
 	local wep = LocalPlayer():GetActiveWeapon()
 	if IsValid(wep) and wep.GMAN_DOOR and wep:GetMode() == 2 then
 		render.SetColorMaterial()
+		if IsValid(wep:GetDoor()) then
+			local door = wep:GetDoor()
+			render.DrawWireframeSphere(door:GetPos() - door:GetForward() * 5, 2, 5, 5, door:GetOpen() and Color(8, 231, 0) or Color(255, 0, 0, 255))
+			render.DrawWireframeSphere(door:GetPos() + door:GetForward() * 10, 1, 5, 5, Color( 0, 3, 197))
+		end
+
 		local tr = LocalPlayer():GetEyeTrace()
 		if not tr.Hit or not tr.HitWorld or tr.StartPos:DistToSqr(tr.HitPos) > 1000 * 1000 then return end
 		local pos = tr.HitPos
-		render.DrawWireframeSphere( pos, 0.5, 5, 5, Color( 175, 0, 0, 255) )
+		render.DrawWireframeSphere( pos, 2, 5, 5, Color( 175, 0, 0, 255) )
 	end
 end)
 
@@ -575,9 +731,18 @@ local checkwep = function(ply, str)
 	if str == "swep_gmanbriefcase_b" and not util.IsValidModel("models/gman_briefcase.mdl") then
 		if IsValid(ply) and not ply.GMAN_BCHAT then
 			ply:ChatPrint("The server is missing the required addon for this weapon to work!")
-			ply:ChatPrint("You can download it at: https://steamcommunity.com/sharedfiles/filedetails/?id=3218879194")
+			ply:ChatPrint("You can download it at: https://steamcommunity.com/workshop/filedetails/?id=1896637986")
 		end
 		ply.GMAN_BCHAT = true
+		return false
+	end
+
+	if str == "swep_gmanbriefcase_bms" and not util.IsValidModel("models/gman_briefcase.mdl") then
+		if IsValid(ply) and not ply.GMAN_BMSCHAT then
+			ply:ChatPrint("The server is missing the required addon for this weapon to work!")
+			ply:ChatPrint("You can download it at: https://steamcommunity.com/workshop/filedetails/?id=2870296319")
+		end
+		ply.GMAN_BMSCHAT = true
 		return false
 	end
 end
@@ -586,7 +751,7 @@ hook.Add("PlayerSpawnSWEP", "GMAN_CHECKSWEP", checkwep)
 
 hook.Add("TranslateActivity", "GMAN_BRIEFCASE_SPEED_WALKANIM", function(ply, act)
 	local wep = ply:GetActiveWeapon()
-	if not IsValid(wep) or not (wep:GetClass() == "swep_gmanbriefcase" or wep:GetClass() == "swep_gmanbriefcase_b") then return end
+	if not IsValid(wep) or not wep.GMAN_DOOR then return end
 	if act == ACT_MP_WALK and wep:GetHoldType() == "normal" then
 		return ACT_HL2MP_WALK_SUITCASE
 	end
