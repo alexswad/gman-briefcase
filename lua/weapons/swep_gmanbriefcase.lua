@@ -268,7 +268,9 @@ elseif SERVER then
 	end
 
 	function SWEP:Deploy()
-		self:GetOwner():ChatPrint("Current Mode: [" .. self.Mode .. "] " .. self.Modes[self.Mode])
+		if self.Mode then
+			self:GetOwner():ChatPrint("Current Mode: [" .. self.Mode .. "] " .. self.Modes[self.Mode])
+		end
 	end
 
 	local enterfunc = function(owner, type)
@@ -323,8 +325,8 @@ elseif SERVER then
 			self.LastGoodPos = owner:GetPos()
 
 			if enterfunc(owner, self.BriefType) then
-				self:SetNextSecondaryFire(CurTime() + 6)
-				self:SetNextPrimaryFire(CurTime() + 6)
+				self:SetNextSecondaryFire(CurTime() + 4)
+				self:SetNextPrimaryFire(CurTime() + 5)
 			end
 		elseif self.Mode == 1 then
 			self:SetHoldType("melee")
@@ -489,7 +491,8 @@ elseif SERVER then
 			self:SetNextPrimaryFire(CurTime() + 0.2)
 			self:SetNextSecondaryFire(CurTime() + 0.2)
 			local tr = util.QuickTrace(owner:GetShootPos(), owner:GetAimVector() * 1000, owner)
-			if not tr.Hit or not tr.HitWorld or not tr.HitNormal:IsEqualTol(Vector(0, 0, 1), 0.5) then return end
+			if not tr.Hit or not tr.HitNormal:IsEqualTol(Vector(0, 0, 1), 0.5) then return end
+			if not tr.HitWorld and (not IsValid(tr.Entity) or IsValid(tr.Entity) and tr.Entity:GetClass() ~= "gman_interior" or tr.Entity.exterior == self:GetDoor()) then return end
 
 			if not IsValid(self:GetDoor()) then
 				local door = ents.Create("gman_exterior")

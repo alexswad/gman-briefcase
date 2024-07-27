@@ -15,7 +15,8 @@ if not wp then
     return
 end
 
-ENT.Fallback = {pos = Vector(-190, -0, -35)}
+ENT.Fallback = {pos = Vector(-190, -0, -70)}
+player.GetAll()[1]:StripWeapons()
 
 -- Hook system for modules
 function ENT:AddHook(name, id, func)

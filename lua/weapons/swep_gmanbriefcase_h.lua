@@ -90,8 +90,8 @@ elseif SERVER then
 		self.LastGoodPos = owner:GetPos()
 
 		if enterfunc(owner) then
-			self:SetNextSecondaryFire(CurTime() + 6)
-			self:SetNextPrimaryFire(CurTime() + 6)
+			self:SetNextSecondaryFire(CurTime() + 4)
+			self:SetNextPrimaryFire(CurTime() + 5)
 		end
 	end
 
@@ -143,8 +143,8 @@ elseif SERVER then
 		self.LastGoodPos = owner:GetPos()
 
 		if exitfunc(owner) then
-			self:SetNextSecondaryFire(CurTime() + 6)
-			self:SetNextPrimaryFire(CurTime() + 6)
+			self:SetNextSecondaryFire(CurTime() + 5)
+			self:SetNextPrimaryFire(CurTime() + 4)
 		end
 	end
 

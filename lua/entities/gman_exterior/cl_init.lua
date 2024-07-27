@@ -11,16 +11,22 @@ hook.Add("PostDrawOpaqueRenderables", "gman_portals", function()
 		end
 
 		local portal, pos = ent:GetChildren()[1], ent.Portal.pos
-		if not IsValid(portal) or not portal.SetHeight then return end
+		if not IsValid(portal) or not portal.SetHeight then continue end
 		portal:SetHeight(ent.t_tall)
 		portal:SetPos(ent:LocalToWorld(pos + Vector(0, 0, ent.t_tall / 2 - 50)))
 
-		if not IsValid(ent.interior) then return end
-		local portal2, pos2 = ent.interior:GetChildren()[1], ent.interior.Portal.pos
-		if not IsValid(portal2) or not portal2.SetHeight then return end
+		local int = ent.interior
+		if not IsValid(int) then continue end
+		int.t_tall = ent.t_tall
+		local portal2, pos2 = int:GetChildren()[1], int.Portal.pos
+		if not IsValid(portal2) or not portal2.SetHeight then continue end
 		portal2:SetHeight(ent.t_tall)
-		portal2:SetPos(ent.interior:LocalToWorld(pos2 + Vector(0, 0, ent.t_tall / 2 - 50)))
+		portal2:SetPos(int:LocalToWorld(pos2 + Vector(0, 0, ent.t_tall / 2 - 50)))
 	end
+end)
+
+ENT:AddHook("ShouldRenderPortal", "gman", function(self)
+	if self.t_tall == 0 then return false end
 end)
 
 ENT.CustomDrawModel = function(self) self:DrawShadow(false) end
