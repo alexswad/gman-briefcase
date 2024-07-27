@@ -375,12 +375,15 @@ elseif SERVER then
 				owner:ChatPrint("Door Opened")
 				door:EmitSound("doors/metal_move1.wav")
 			elseif IsValid(self:GetDoor()) then
-				self:GetDoor():SetOpen(not self:GetDoor():GetOpen())
-				if self:GetDoor():GetOpen() then
-					self:GetDoor():EmitSound("doors/metal_move1.wav")
+				local door = self:GetDoor()
+				door:SetOpen(not door:GetOpen())
+				if door:GetOpen() then
+					door:EmitSound("doors/metal_move1.wav")
+					door.interior:GetChildren()[1]:EmitSound("doors/metal_move1.wav")
 					owner:ChatPrint("Door Opened")
 				else
-					self:GetDoor():EmitSound("doors/door_metal_rusty_move1.wav")
+					door:EmitSound("doors/door_metal_rusty_move1.wav")
+					door.interior:GetChildren()[1]:EmitSound("doors/door_metal_rusty_move1.wav")
 					owner:ChatPrint("Door Closed")
 				end
 			end
