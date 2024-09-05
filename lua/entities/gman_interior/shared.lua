@@ -88,3 +88,7 @@ end
 ENT:AddHook("ShouldTeleportPortal", "gman", function(self, portal, ent)
     if not self.exterior:GetOpen() then return false end
 end)
+
+ENT:AddHook("ShouldRenderPortal", "gman", function(self)
+    if self.t_tall == 0 then return false end
+end)

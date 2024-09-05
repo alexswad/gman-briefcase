@@ -97,10 +97,10 @@ if CLIENT then
 		end
 	end)
 
-	hook.Add("PreDrawViewModel", "GMAN_VM", function(name)
-		if IsValid(LocalPlayer()) and LocalPlayer():GetNWBool("GMAN_BF") then
-			return true
-		end
+	local cl = CreateClientConVar("cl_gman_disablevm", "0", true, false, "Disables viewmodels for briefcases")
+	hook.Add("PreDrawViewModel", "GMAN_VM", function(name, ply, weapon)
+		if cl:GetBool() and ply == LocalPlayer() and IsValid(weapon) and weapon.GMAN_DOOR then return true end
+		if IsValid(ply) and ply:GetNWBool("GMAN_BF") then return true end
 	end)
 
 	function SWEP:Holster()
@@ -538,9 +538,8 @@ elseif SERVER then
 	SWEP.Modes = {
 		[0] = "Ghost Self (Left Click - Disappear / Right Click - Reappear)",
 		[1] = "Attack (Left Click & Right Click - Melee Attack)",
-		[2] = "White Room Portal (Left Click - Open & Cloor Door / Right Click - Set Door Destination)",
-		--[3] = "Teleport Self (Left Click - Teleport into White Room / Right click - Teleport to White Room Exit)",
-		--[4] = "Teleport Other",
+		[2] = "White Room Portal (Left Click - Open & Cloor Door / Right Click - Set Door Entrance)",
+		[3] = "Linked Doors (Left Click - Set Door 1 / Right Click - Set Door 2 / Alt - Open & Close Doors)"
 	}
 
 	if not wp then
@@ -759,7 +758,7 @@ local checkwep = function(ply, str)
 		return false
 	end
 
-	if str == "swep_gmanbriefcase_bms" and not util.IsValidModel("models/gman_briefcase.mdl") then
+	if str == "swep_gmanbriefcase_bms" and not util.IsValidModel("models/sketchfab/quaz30/g_man_briefcase/skf_g_man_briefcase.mdl") then
 		if IsValid(ply) and not ply.GMAN_BMSCHAT then
 			ply:ChatPrint("The server is missing the required addon for this weapon to work!")
 			ply:ChatPrint("You can download it at: https://steamcommunity.com/workshop/filedetails/?id=2870296319")
