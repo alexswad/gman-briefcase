@@ -1,71 +1,16 @@
 AddCSLuaFile("shared.lua")
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("vgui.lua")
+AddCSLuaFile("meta.lua")
 include("shared.lua")
+include("meta.lua")
 
-local gman = GMANBF
-
-local noclip = CreateConVar("gman_noclip", "0", {FCVAR_ARCHIVE}, "0=Collisions while Teleporting, 1=Noclipping", 0, 2)
-gman.CV_Noclip = noclip
-
-local DoorSounds = {
-	"ambient/alarms/train_horn_distant1.wav",
-	"ambient/alarms/apc_alarm_pass1.wav",
-	"ambient/alarms/manhack_alert_pass1.wav",
-	"ambient/alarms/scanner_alert_pass1.wav"
-}
+//local noclip = SWEP.CV_Noclip
 
 function SWEP:Deploy()
 	if self.Mode then
-		self:GetOwner():ChatPrint("Current Mode: [" .. self.Mode .. "] " .. self.Modes[self.Mode])
+		self:GetOwner():ChatPrint("Current Mode: [" .. self.Mode .. "] " .. (self.Modes[self.Mode] or "UNK"))
 	end
-end
-
-GMAN = {}
-// Helper functions
-GMAN.DoGhostDoor()
-
-local enterfunc = function(owner, type)
-	local tr = util.QuickTrace(owner:GetPos() + Vector(0, 0, 5), Angle(0, owner:EyeAngles().y, 0):Forward() * 60, function() return false end)
-	local a = ents.Create("anim_gmantele")
-	a:SetPos(owner:GetPos())
-	a:SetModel(owner:GetModel())
-	a:SetPlayerColor(owner:GetPlayerColor())
-
-	for k, v in pairs(owner:GetBodyGroups()) do
-		a:SetBodygroup(v.id, owner:GetBodygroup(v.id))
-	end
-	a:SetSkin(owner:GetSkin())
-
-	math.randomseed(SysTime() + a:GetCreationID())
-	local snd = math.random(1, 20)
-
-	if DoorSounds[snd] then
-		a:EmitSound(DoorSounds[snd], 65, 96, 1, CHAN_AUTO, SND_NOFLAGS, 133)
-	end
-
-	if type then a:SetBriefType(type) end
-
-	if tr.Hit then
-		a:SetAngles(Angle(0, (-tr.HitNormal):Angle().y, 0))
-	else
-		a:SetAngles(Angle(0, owner:EyeAngles().y, 0))
-	end
-	a:Spawn()
-
-	owner:SetNWEntity("GMAN_ANIM", a)
-	owner:Flashlight(false)
-	EnableNoclip(owner)
-
-	timer.Simple(4, function()
-		if IsValid(a) and IsValid(owner) then
-			owner:SetNWEntity("GMAN_ANIM", NULL)
-			owner:SetEyeAngles(a:GetAngles())
-			SafeRemoveEntityDelayed(a, 4)
-		end
-	end)
-
-	return true
 end
 
 function SWEP:PrimaryAttack()
@@ -79,15 +24,15 @@ function SWEP:PrimaryAttack()
 		self:GetDoor():PlayerEnter(owner, true)
 		return
 	end
-	if self.Mode == 0 then
+	if self.Mode == 1 then
 		self.LastGoodPos = owner:GetPos()
 
-		if enterfunc(owner, self.BriefType) then
+		if self:DoPlayerGhostDoor(owner, false, self.BriefType) then
 			self:SetNextSecondaryFire(CurTime() + 4)
 			self:SetNextPrimaryFire(CurTime() + 5)
 		end
 		owner:ChatPrint("\nLeft Click - Teleport to White Room (If Available) / Reload - Teleport to Exit Door / Right Click - Reappear")
-	elseif self.Mode == 1 then
+	elseif self.Mode == 2 then
 		self:SetHoldType("melee")
 		timer.Simple(0.1, function()
 			owner:SetAnimation(PLAYER_ATTACK1)
@@ -119,7 +64,7 @@ function SWEP:PrimaryAttack()
 		else
 			owner:EmitSound(self.Miss)
 		end
-	elseif self.Mode == 2 then
+	elseif self.Mode == 3 then
 		self:SetNextSecondaryFire(CurTime() + 1)
 		local tr = util.QuickTrace(owner:GetShootPos(), owner:GetAimVector() * 500, owner)
 		if not IsValid(self:GetDoor()) and tr.Hit and tr.HitWorld and tr.HitNormal:IsEqualTol(Vector(0, 0, 1), 0.5) then
@@ -151,69 +96,20 @@ function SWEP:PrimaryAttack()
 	end
 end
 
-local exitfunc = function(owner, type)
-	local tr = util.QuickTrace(owner:EyePos(), Angle(0, owner:EyeAngles().y, 0):Forward() * 60, {owner})
-	if tr.Hit then return end
-	tr = util.QuickTrace(owner:EyePos(), -owner:GetUp() * 200, {owner})
-
-	local a = ents.Create("anim_gmantele_ex")
-	a:SetPos(tr.Hit and tr.HitPos + Vector(0, 0, 0.5) or owner:GetPos())
-	a:SetModel(owner:GetModel())
-	a:SetPlayerColor(owner:GetPlayerColor())
-
-	for k, v in pairs(owner:GetBodyGroups()) do
-		a:SetBodygroup(v.id, owner:GetBodygroup(v.id))
-	end
-	a:SetSkin(owner:GetSkin())
-
-	math.randomseed(CurTime() + a:GetCreationID())
-	local snd = math.random(1, 20)
-
-	if DoorSounds[snd] then
-		a:EmitSound(DoorSounds[snd], 65, 96, 1, CHAN_AUTO, SND_NOFLAGS, 133)
-	end
-
-	if type then a:SetBriefType(type) end
-
-	a:SetAngles(Angle(0, owner:EyeAngles().y, 0))
-	a:Spawn()
-
-	owner:SetNWEntity("GMAN_ANIM", a)
-
-	timer.Simple(2.8, function()
-		if IsValid(a) and IsValid(owner) then
-			owner:SetPos(a:GetPos())
-			owner:SetEyeAngles(a:GetAngles())
-		end
-	end)
-
-	timer.Simple(3, function()
-		if IsValid(a) and IsValid(owner) then
-			owner:SetNWEntity("GMAN_ANIM", NULL)
-			DisableNoclip(owner)
-
-			owner:SetPos(a:GetPos())
-			owner:SetEyeAngles(a:GetAngles())
-			SafeRemoveEntityDelayed(a, 2)
-		end
-	end)
-	return true
-end
-
 function SWEP:SecondaryAttack()
 	local owner = self:GetOwner()
 	self:SetNextPrimaryFire(CurTime() + 0.5)
 	self:SetNextSecondaryFire(CurTime() + 0.5)
 	if not IsValid(owner) then return end
-	if self.Mode == 0 then
+	if self.Mode == 1 then
 		if not owner:GetNWBool("GMAN_BF") then return end
 		self.LastGoodPos = owner:GetPos()
 
-		if exitfunc(owner, self.BriefType) then
+		if self:DoPlayerGhostDoor(owner, true, self.BriefType) then
 			self:SetNextSecondaryFire(CurTime() + 6)
 			self:SetNextPrimaryFire(CurTime() + 6)
 		end
-	elseif self.Mode == 1 then
+	elseif self.Mode == 2 then
 		self:SetHoldType("melee")
 		timer.Simple(0.1, function()
 			owner:SetAnimation(PLAYER_ATTACK1)
@@ -246,7 +142,7 @@ function SWEP:SecondaryAttack()
 		else
 			owner:EmitSound(self.MissSecond)
 		end
-	elseif self.Mode == 2 then
+	elseif self.Mode == 3 then
 		self:SetNextPrimaryFire(CurTime() + 0.2)
 		self:SetNextSecondaryFire(CurTime() + 0.2)
 		local tr = util.QuickTrace(owner:GetShootPos(), owner:GetAimVector() * 1000, owner)
@@ -282,7 +178,7 @@ function SWEP:OnDrop()
 	local owner = self:GetOwner()
 	if IsValid(owner) and owner:Alive() and owner:GetNWBool("GMAN_BF") then
 		owner:SetNWEntity("GMAN_ANIM", NULL)
-		DisableNoclip(owner)
+		self.NoclipPlayer(owner, false)
 		owner:SetPos(self.LastGoodPos or owner:GetPos())
 	end
 end
@@ -313,7 +209,7 @@ function SWEP:Reload()
 
 	self.Mode = self.Mode + 1
 	if not self.Modes[self.Mode] then
-		self.Mode = 0
+		self.Mode = 1
 	end
 	self:SetMode(self.Mode)
 	self:GetOwner():ChatPrint("Mode set to: [" .. self.Mode .. "] " .. self.Modes[self.Mode])
@@ -324,12 +220,13 @@ function SWEP:OnRemove()
 	local owner = self:GetOwner()
 	if IsValid(owner) and owner:Alive() and owner:GetNWBool("GMAN_BF") then
 		owner:SetNWEntity("GMAN_ANIM", NULL)
-		DisableNoclip(owner)
+		self.NoclipPlayer(owner, false)
 		owner:SetPos(self.LastGoodPos or owner:GetPos())
 	end
 end
 
+local NoclipPlayer = SWEP.NoclipPlayer
 hook.Add("PlayerSpawn", "GMAN_SPAWN", function(ply)
 	ply:SetNWEntity("GMAN_ANIM", NULL)
-	DisableNoclip(ply)
+	NoclipPlayer(ply, false)
 end)

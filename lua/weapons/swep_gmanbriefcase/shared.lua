@@ -1,4 +1,3 @@
-GMANBF = {}
 SWEP.PrintName 		= "G-Man Suitcase Rewrite"
 
 SWEP.Author 		= "eskil"
@@ -7,6 +6,7 @@ SWEP.Purpose 		= ""
 SWEP.Category		= "G-Man Briefcase"
 SWEP.GMAN			= true
 SWEP.GMAN_DOOR		= true
+SWEP.BriefType = 0
 
 SWEP.Spawnable = true
 SWEP.AdminOnly = true
@@ -22,44 +22,46 @@ SWEP.ViewModelBoneMods = {
 	["SuitCase_Passenger1.Case_Mesh"] = { scale = Vector(0.61, 0.61, 0.61), pos = Vector(9.444, -6.481, 0), angle = Angle(1.11, 10, 0) }
 }
 
-SWEP.Models = {{
-	name = "Original",
-	model = "models/props_c17/SuitCase_Passenger_Physics.mdl",
-	vm = {
-		["SuitCase_Passenger1.Case_Mesh"] = { scale = Vector(0.61, 0.61, 0.61), pos = Vector(9.444, -6.481, 0), angle = Angle(1.11, 10, 0) }
+SWEP.Models = {
+	{
+		name = "Original",
+		model = "models/props_c17/SuitCase_Passenger_Physics.mdl",
+		vm = {
+			["SuitCase_Passenger1.Case_Mesh"] = { scale = Vector(0.61, 0.61, 0.61), pos = Vector(9.444, -6.481, 0), angle = Angle(1.11, 10, 0) }
+		},
+		wm = {
+			pos = Vector(5, -1, 0),
+			ang = Angle(-90, 0, 0)
+		}
 	},
-	wm = {
-		pos = Vector(5, -1, 0),
-		ang = Angle(-90, 0, 0)
-	}
-},
-{
-	name = "None",
-	model = "models/weapons/v_hands.mdl",
-	vm = {},
-},
-{
-	name = "GMan",
-	model = "models/props_c17/SuitCase_Passenger_Physics.mdl",
-	vm = {
-		["root"] = { scale = Vector(1, 1, 1), pos = Vector(13.519, -8.334, -15), angle = Angle(-5.557, 0, 0) }
+	{
+		name = "None",
+		model = "models/weapons/v_hands.mdl",
+		vm = {},
 	},
-	wm = {
-		pos = Vector(20, -1, 0),
-		ang = Angle(-90, 0, 0)
-	}
-},
-{
-	name = "Black Mesa",
-	model = "models/props_c17/SuitCase_Passenger_Physics.mdl",
-	vm = {
-		["root"] = { scale = Vector(0.6, 0.6, 0.6), pos = Vector(15, -8.705, -3.889), angle = Angle(-67.778, -12.223, -67.778) }
+	{
+		name = "GMan",
+		model = "models/props_c17/SuitCase_Passenger_Physics.mdl",
+		vm = {
+			["root"] = { scale = Vector(1, 1, 1), pos = Vector(13.519, -8.334, -15), angle = Angle(-5.557, 0, 0) }
+		},
+		wm = {
+			pos = Vector(20, -1, 0),
+			ang = Angle(-90, 0, 0)
+		}
 	},
-	wm = {
-		pos = Vector(12, 1, 0),
-		ang = Angle(180, 0, -90)
+	{
+		name = "Black Mesa",
+		model = "models/props_c17/SuitCase_Passenger_Physics.mdl",
+		vm = {
+			["root"] = { scale = Vector(0.6, 0.6, 0.6), pos = Vector(15, -8.705, -3.889), angle = Angle(-67.778, -12.223, -67.778) }
+		},
+		wm = {
+			pos = Vector(12, 1, 0),
+			ang = Angle(180, 0, -90)
+		}
 	}
-}}
+}
 
 
 SWEP.Primary.Ammo = ""
@@ -80,7 +82,7 @@ SWEP.MissSecond = Sound("npc/zombie/claw_miss2.wav")
 SWEP.Hit = Sound("Weapon_Crowbar.Melee_Hit")
 
 function SWEP:Initialize()
-	self.Mode = 0
+	self.Mode = 1
 	self:SetHoldType("normal")
 	self:SetNextPrimaryFire(CurTime() + 0.5)
 	if CLIENT and not IsValid(self.ClientModel) then
@@ -89,10 +91,17 @@ function SWEP:Initialize()
 	end
 end
 
+function SWEP:BuildModel()
+	if not CLIENT then return end
+
+	if isValid(self.ClientModel) then self.ClientModel:Remove() end
+	self.ClientModel = ClientsideModel(self.WorldModel)
+	self.ClientModel:SetNoDraw(true)
+end
+
 function SWEP:SetupDataTables()
 	self:NetworkVar("Int", 0, "Mode")
-	self:NetworkVar("Entity", 0, "Dimension")
-	self:NetworkVar("Entity", 1, "")
+	self:NetworkVar("Int", 0, "BriefType")
 end
 
 hook.Add("Move", "GMAN_MOVE", function(ply, mv)

@@ -1,5 +1,6 @@
 include("shared.lua")
 include("vgui.lua")
+include("meta.lua")
 
 function SWEP:DrawWorldModel(flags)
 	local owner = self:GetOwner()
